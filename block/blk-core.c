@@ -1121,9 +1121,12 @@ generic_make_request_checks(struct bio *bio)
 			err = 0;
 			goto wp_end_io;
 		} else if (atomic_read(&emmc_reboot) && (bio->bi_rw & WRITE)) {
-			pr_info("%s: Attempt to write eMMC, %s block %Lu \n", __func__,
+			pr_info("%s: Attempt to write eMMC, %s block %Lu \n", current->comm,
 				bdevname(bio->bi_bdev, b), (unsigned long long)bio->bi_sector);
-			err = 0;
+			if (!strncmp(current->comm, "jbd", 3))
+				err = 0;
+			else
+				err = -EROFS;
 			goto wp_end_io;
 		}
 #endif

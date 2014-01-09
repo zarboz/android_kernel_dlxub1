@@ -11,6 +11,10 @@
 #endif
 
 #ifdef CONFIG_ISA_DMA_API
+/*
+ * This is used to support drivers written for the x86 ISA DMA API.
+ * It should not be re-used except for that purpose.
+ */
 #include <linux/spinlock.h>
 #include <asm/scatterlist.h>
 

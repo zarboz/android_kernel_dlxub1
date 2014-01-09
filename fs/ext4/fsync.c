@@ -62,6 +62,19 @@ static void dump_completed_IO(struct inode * inode)
 #endif
 }
 
+/*
+ * This function is called from ext4_sync_file().
+ *
+ * When IO is completed, the work to convert unwritten extents to
+ * written is queued on workqueue but may not get immediately
+ * scheduled. When fsync is called, we need to ensure the
+ * conversion is complete before fsync returns.
+ * The inode keeps track of a list of pending/completed IO that
+ * might needs to do the conversion. This function walks through
+ * the list and convert the related unwritten extents for completed IO
+ * to written.
+ * The function return the number of pending IOs on success.
+ */
 int ext4_flush_completed_IO(struct inode *inode)
 {
 	ext4_io_end_t *io;
@@ -77,6 +90,20 @@ int ext4_flush_completed_IO(struct inode *inode)
 				ext4_io_end_t, list);
 		list_del_init(&io->list);
 		io->flag |= EXT4_IO_END_IN_FSYNC;
+		/*
+		 * Calling ext4_end_io_nolock() to convert completed
+		 * IO to written.
+		 *
+		 * When ext4_sync_file() is called, run_queue() may already
+		 * about to flush the work corresponding to this io structure.
+		 * It will be upset if it founds the io structure related
+		 * to the work-to-be schedule is freed.
+		 *
+		 * Thus we need to keep the io structure still valid here after
+		 * conversion finished. The io structure has a flag to
+		 * avoid double converting from both fsync and background work
+		 * queue work.
+		 */
 		spin_unlock_irqrestore(&ei->i_completed_io_lock, flags);
 		ret = ext4_end_io_nolock(io);
 		if (ret < 0)
@@ -88,6 +115,14 @@ int ext4_flush_completed_IO(struct inode *inode)
 	return (ret2 < 0) ? ret2 : 0;
 }
 
+/*
+ * If we're not journaling and this is a just-created file, we have to
+ * sync our parent directory (if it was freshly created) since
+ * otherwise it will only be written by writeback, leaving a huge
+ * window during which a crash may lose the file.  This may apply for
+ * the parent directory's parent as well, and so on recursively, if
+ * they are also freshly created.
+ */
 static int ext4_sync_parent(struct inode *inode)
 {
 	struct writeback_control wbc;
@@ -156,14 +191,27 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	int ret;
 	tid_t commit_tid;
 	bool needs_barrier = false;
+#ifdef CONFIG_FSYNC_DEBUG
+	ktime_t fsync_t, fsync_diff;
+#endif
 
 	J_ASSERT(ext4_journal_current_handle() == NULL);
 
 	trace_ext4_sync_file_enter(file, datasync);
 
+#ifdef CONFIG_FSYNC_DEBUG
+	fsync_t = ktime_get();
+	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+	fsync_diff = ktime_sub(ktime_get(), fsync_t);
+	if (ktime_to_ns(fsync_diff) >= 5000000000LL)
+		printk("%s: filemap_write_and_wait_range() takes %lld nsec\n", __func__, ktime_to_ns(fsync_diff));
+	if (ret)
+		return ret;
+#else
 	ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
 	if (ret)
 		return ret;
+#endif
 	mutex_lock(&inode->i_mutex);
 
 	if (inode->i_sb->s_flags & MS_RDONLY)
@@ -190,9 +238,27 @@ int ext4_sync_file(struct file *file, loff_t start, loff_t end, int datasync)
 	    !jbd2_trans_will_send_data_barrier(journal, commit_tid))
 		needs_barrier = true;
 	jbd2_log_start_commit(journal, commit_tid);
+#ifdef CONFIG_FSYNC_DEBUG
+	fsync_t = ktime_get();
 	ret = jbd2_log_wait_commit(journal, commit_tid);
-	if (needs_barrier)
+	fsync_diff = ktime_sub(ktime_get(), fsync_t);
+	if (ktime_to_ns(fsync_diff) >= 5000000000LL)
+		printk("%s: jbd2_log_wait_commit() takes %lld nsec\n", __func__, ktime_to_ns(fsync_diff));
+#else
+	ret = jbd2_log_wait_commit(journal, commit_tid);
+#endif
+
+	if (needs_barrier) {
+#ifdef CONFIG_FSYNC_DEBUG
+		fsync_t = ktime_get();
 		blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+		fsync_diff = ktime_sub(ktime_get(), fsync_t);
+		if (ktime_to_ns(fsync_diff) >= 5000000000LL)
+			printk("%s: blkdev_issue_flush() takes %lld nsec\n", __func__, ktime_to_ns(fsync_diff));
+#else
+	blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+#endif
+	}
  out:
 	mutex_unlock(&inode->i_mutex);
 	trace_ext4_sync_file_exit(inode, ret);

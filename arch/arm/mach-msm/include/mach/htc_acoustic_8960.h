@@ -28,8 +28,10 @@ struct acoustic_ops {
 	int (*get_htc_revision)(void);
 	int (*get_hw_component)(void);
 	int (*enable_digital_mic)(void);
+	int (*get_24b_audio)(void);
 };
 
 void acoustic_register_ops(struct acoustic_ops *ops);
+struct acoustic_ops *acoustic_get_ops(void);
 #endif
 

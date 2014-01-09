@@ -337,6 +337,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 		jbd2_journal_refile_buffer(journal, jh);
 	}
 
+	/*
+	 * Now try to drop any written-back buffers from the journal's
+	 * checkpoint lists.  We do this *before* commit because it potentially
+	 * frees some memory
+	 */
 	spin_lock(&journal->j_list_lock);
 	__jbd2_journal_clean_checkpoint_list(journal);
 	spin_unlock(&journal->j_list_lock);
@@ -373,6 +378,11 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 
 	jbd_debug(3, "JBD2: commit phase 2\n");
 
+	/*
+	 * Way to go: we have now written out all of the data for a
+	 * transaction!  Now comes the tricky part: we need to write out
+	 * metadata.  Loop over the transaction's entire buffer list:
+	 */
 	write_lock(&journal->j_state_lock);
 	commit_transaction->t_state = T_COMMIT;
 	write_unlock(&journal->j_state_lock);
@@ -446,7 +456,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
 					BJ_LogCtl);
 		}
 
-		
+		/* Where is the buffer to be written? */
 
 		err = jbd2_journal_next_log_block(journal, &blocknr);
 		if (err) {
@@ -566,6 +576,16 @@ start_journal_io:
 
 	blk_finish_plug(&plug);
 
+	/* Lo and behold: we have just managed to send a transaction to
+           the log.  Before we can commit it, wait for the IO so far to
+           complete.  Control buffers being written are on the
+           transaction's t_log_list queue, and metadata buffers are on
+           the t_iobuf_list queue.
+
+	   Wait for the buffers in reverse order.  That way we are
+	   less likely to be woken up until all IOs have completed, and
+	   so we incur less scheduling load.
+	*/
 
 	jbd_debug(3, "JBD2: commit phase 3\n");
 
@@ -727,6 +747,15 @@ restart_loop:
 				clear_buffer_jbddirty(bh);
 		} else {
 			J_ASSERT_BH(bh, !buffer_dirty(bh));
+			/*
+			 * The buffer on BJ_Forget list and not jbddirty means
+			 * it has been freed by this transaction and hence it
+			 * could not have been reallocated until this
+			 * transaction has committed. *BUT* it could be
+			 * reallocated once we have written all the data to
+			 * disk and before we process the buffer on BJ_Forget
+			 * list.
+			 */
 			if (!jh->b_next_transaction)
 				try_to_free = 1;
 		}
@@ -809,6 +838,9 @@ restart_loop:
 				commit_transaction;
 		}
 	}
+	
+	if (atomic_read(&vfs_emergency_remount))
+		journal->commit_callback_done = 1;
 	spin_unlock(&journal->j_list_lock);
 
 	if (journal->j_commit_callback)
@@ -819,6 +851,10 @@ restart_loop:
 		  journal->j_commit_sequence, journal->j_tail_sequence);
 	if (to_free)
 		jbd2_journal_free_transaction(commit_transaction);
+
+	
+	if (atomic_read(&vfs_emergency_remount))
+		journal->commit_callback_done = 0;
 
 	wake_up(&journal->j_wait_done_commit);
 }

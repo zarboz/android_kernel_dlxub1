@@ -76,6 +76,10 @@ struct scsi_cmnd {
 
 	void (*scsi_done) (struct scsi_cmnd *);
 
+	/*
+	 * The following fields can be written to by the host specific code. 
+	 * Everything else should be left alone. 
+	 */
 	struct scsi_pointer SCp;	
 
 	unsigned char *host_scribble;	

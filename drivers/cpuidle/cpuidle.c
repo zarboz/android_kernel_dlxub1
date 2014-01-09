@@ -126,13 +126,17 @@ int cpuidle_idle_call(void)
 		return 0;
 	}
 
+	
+#ifndef CONFIG_ARCH_MSM
 	trace_power_start_rcuidle(POWER_CSTATE, next_state, dev->cpu);
 	trace_cpu_idle_rcuidle(next_state, dev->cpu);
-
+#endif
 	entered_state = cpuidle_enter_ops(dev, drv, next_state);
 
+#ifndef CONFIG_ARCH_MSM
 	trace_power_end_rcuidle(dev->cpu);
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, dev->cpu);
+#endif
 
 	if (entered_state >= 0) {
 		

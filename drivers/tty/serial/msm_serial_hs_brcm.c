@@ -985,6 +985,7 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 			msm_uport->rx.buffer_pending |= TTY_OVERRUN;
 		uport->icount.buf_overrun++;
 		error_f = 1;
+		printk(KERN_ERR "[BT]***OVERRUN:%d\n", uport->icount.buf_overrun);
 	}
 
 	if (!(uport->ignore_status_mask & INPCK))
@@ -994,6 +995,7 @@ static void msm_serial_hs_rx_tlet(unsigned long tlet_ptr)
 		
 		uport->icount.parity++;
 		error_f = 1;
+		printk(KERN_ERR "[BT]***PARITY FRAME error:%d\n", uport->icount.parity);
 		if (uport->ignore_status_mask & IGNPAR) {
 			retval = tty_insert_flip_char(tty, 0, TTY_PARITY);
 			if (!retval)

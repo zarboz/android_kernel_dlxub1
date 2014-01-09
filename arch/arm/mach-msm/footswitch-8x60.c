@@ -510,9 +510,6 @@ static struct platform_driver footswitch_driver = {
 static int __init late_footswitch_init(void)
 {
 	int i;
-#ifdef CONFIG_MACH_DUMMY
-	return 0;
-#endif
 
 	mutex_lock(&claim_lock);
 	

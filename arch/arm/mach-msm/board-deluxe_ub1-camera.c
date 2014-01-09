@@ -2277,7 +2277,7 @@ static int deluxe_ub1_ov2722_vreg_on(void)
 {
 	int rc;
 	pr_info("[CAM] %s\n", __func__);
-	
+
 	
 	mclk_switch (0);
 
@@ -2290,7 +2290,7 @@ static int deluxe_ub1_ov2722_vreg_on(void)
 	gpio_direction_output(CAM_PIN_GPIO_V_RAW_1V8_EN, 1);
 	gpio_free(CAM_PIN_GPIO_V_RAW_1V8_EN);
 	mdelay(5);
-	
+
 	
 	rc = gpio_request(CAM_PIN_GPIO_CAM2_RSTz, "ov2722");
 	if (rc < 0) {
@@ -2328,7 +2328,7 @@ static int deluxe_ub1_ov2722_vreg_on(void)
 	gpio_direction_output(CAM_PIN_GPIO_CAM2_RSTz, 0);
 	gpio_free(CAM_PIN_GPIO_CAM2_RSTz);
 	mdelay(5);
-	
+
 	
 	mclk_switch (1);
 
@@ -2373,7 +2373,7 @@ static int deluxe_ub1_ov2722_vreg_off(void)
 	rc = camera_sensor_power_disable(reg_8921_l8);
 	if (rc < 0)
 		pr_err("[CAM] sensor_power_disable(\"8921_l8\") FAILED %d\n", rc);
-		
+
 	
 	rc = camera_sensor_power_disable(reg_8921_lvs4);
 	if (rc < 0)
@@ -2395,7 +2395,7 @@ static int deluxe_ub1_ov2722_vreg_off(void)
 	if (rc>=0) {
 		gpio_direction_output(CAM_PIN_GPIO_V_CAM2_D1V8_EN, 0);
 		gpio_free(CAM_PIN_GPIO_V_CAM2_D1V8_EN);
-	}	
+	}
 	
 	mclk_switch (0);
 

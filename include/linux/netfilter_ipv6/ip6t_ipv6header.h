@@ -1,4 +1,6 @@
 
+/* Original idea: Brad Chapman 
+ * Rewritten by: Andras Kis-Szabo <kisza@sch.bme.hu> */
 
 
 #ifndef __IPV6HEADER_H

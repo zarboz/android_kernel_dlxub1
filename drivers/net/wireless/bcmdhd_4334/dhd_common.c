@@ -277,14 +277,9 @@ dhd_wl_ioctl(dhd_pub_t *dhd_pub, int ifindex, wl_ioctl_t *ioc, void *buf, int le
 	dhd_os_proto_block(dhd_pub);
 
 	ret = dhd_prot_ioctl(dhd_pub, ifindex, ioc, buf, len);
-#if defined(CUSTOMER_HW4)
-	if (!ret || ret == -ETIMEDOUT)
-#else
-	if (!ret)
-#endif 
-		
-		if (dhd_pub->up)
-			dhd_os_check_hang(dhd_pub, ifindex, ret);
+	if ((ret || ret == -ETIMEDOUT) && dhd_pub->up){
+		dhd_os_check_hang(dhd_pub, ifindex, ret);
+    }
 
 	dhd_os_proto_unblock(dhd_pub);
 
@@ -1262,12 +1257,6 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 	
 	bcm_mkiovar("pkt_filter_delete", (char *)&pkt_id, 4, buf, sizeof(buf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE, 0);
-#if defined(APSTA_CONCURRENT) && defined(SOFTAP)
-	if ( ap_net_dev ) {
-		printf("%s: apsta concurrent running, just add but don't enable rule id:%d\n", __FUNCTION__, pkt_id);
-		return 0;
-	}	
-#endif
 
 	if (!add) {
 		return 0;
@@ -1334,6 +1323,15 @@ int dhd_set_pktfilter(dhd_pub_t * dhd, int add, int id, int offset, char *mask, 
 
 	enable_parm.id = htod32(pkt_id);
 	enable_parm.enable = htod32(1);
+	
+#if defined(APSTA_CONCURRENT) && defined(SOFTAP)
+		if ( ap_net_dev ) {
+			printf("%s: apsta concurrent running, just add but don't enable rule id:%d\n", __FUNCTION__, pkt_id);
+			enable_parm.enable = htod32(0);
+		} else
+			enable_parm.enable = htod32(1);
+#endif
+	
 	bcm_mkiovar("pkt_filter_enable", (char *)&enable_parm,
 		sizeof(wl_pkt_filter_enable_t), buf, sizeof(buf));
 	dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, buf, sizeof(buf), TRUE , 0);

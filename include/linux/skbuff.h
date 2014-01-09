@@ -487,6 +487,14 @@ static inline struct sk_buff *skb_get(struct sk_buff *skb)
 }
 
 
+/**
+ *	skb_cloned - is the buffer a clone
+ *	@skb: buffer to check
+ *
+ *	Returns true if the buffer was generated with skb_clone() and is
+ *	one of multiple shared copies of the buffer. Cloned buffers are
+ *	shared data so must not be written to under normal circumstances.
+ */
 static inline int skb_cloned(const struct sk_buff *skb)
 {
 	return skb->cloned &&
@@ -701,15 +709,8 @@ static inline void __skb_unlink(struct sk_buff *skb, struct sk_buff_head *list)
 extern struct sk_buff *skb_dequeue(struct sk_buff_head *list);
 static inline struct sk_buff *__skb_dequeue(struct sk_buff_head *list)
 {
-	struct sk_buff *skb = NULL;
-
-	if ((!list) || (IS_ERR(list))) {
-	    printk("[NET] list is NULL in %s\n", __func__);
-	    return NULL;
-	}
-
-	skb = skb_peek(list);
-	if ((skb) && (!IS_ERR(skb)))
+	struct sk_buff *skb = skb_peek(list);
+	if (skb)
 		__skb_unlink(skb, list);
 	return skb;
 }
@@ -1080,16 +1081,8 @@ extern void skb_queue_purge(struct sk_buff_head *list);
 static inline void __skb_queue_purge(struct sk_buff_head *list)
 {
 	struct sk_buff *skb;
-
-	if ((!list) || (IS_ERR(list))) {
-	    printk("[NET] list is NULL in %s\n", __func__);
-	    return;
-	}
-
-	while ((skb = __skb_dequeue(list)) != NULL) {
-	    if ((skb) && (!IS_ERR(skb)))
-		    kfree_skb(skb);
-	}
+	while ((skb = __skb_dequeue(list)) != NULL)
+		kfree_skb(skb);
 }
 
 static inline struct sk_buff *__dev_alloc_skb(unsigned int length,
@@ -1223,7 +1216,7 @@ static inline int skb_cow_head(struct sk_buff *skb, unsigned int headroom)
 	return __skb_cow(skb, headroom, skb_header_cloned(skb));
 }
 
-
+ 
 static inline int skb_padto(struct sk_buff *skb, unsigned int len)
 {
 	unsigned int size = skb->len;

@@ -14,6 +14,9 @@
  * GNU General Public License for more details.
  */
 
+/* Acknowledgements:
+ * This file is based on msm_serial.c, originally
+ * Written by Robert Love <rlove@google.com>  */
 
 #if defined(CONFIG_SERIAL_MSM_HSL_CONSOLE) && defined(CONFIG_MAGIC_SYSRQ)
 #define SUPPORT_SYSRQ
@@ -1047,6 +1050,15 @@ static struct msm_hsl_port msm_hsl_uart_ports[] = {
 			.flags = UPF_BOOT_AUTOCONF,
 			.fifosize = 64,
 			.line = 3,
+		},
+	},
+	{
+		.uart = {
+			.iotype = UPIO_MEM,
+			.ops = &msm_hsl_uart_pops,
+			.flags = UPF_BOOT_AUTOCONF,
+			.fifosize = 64,
+			.line = 4,
 		},
 	},
 };

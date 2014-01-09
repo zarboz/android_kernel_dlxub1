@@ -13,8 +13,11 @@
 #define DOCK_STATE_THREE_POGO_DOCK		(1 << 7)
 
 #define DOCK_DET_DELAY		HZ/4
-
+#ifdef CONFIG_MACH_DUMMY
+#define ADC_RETRY 5
+#else
 #define ADC_RETRY 3
+#endif
 #define ADC_DELAY HZ/8
 
 #define PM8058ADC_15BIT(adc) ((adc * 2200) / 32767) 
@@ -87,6 +90,7 @@ struct cable_detect_platform_data {
 	int idpin_irq;
 	int carkit_only;
 	int (*detect_three_pogo_dock)(void);
+	int enable_vbus_usb_switch;
 };
 
 #ifdef CONFIG_FB_MSM_HDMI_MHL_SII9234

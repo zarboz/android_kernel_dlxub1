@@ -146,6 +146,38 @@ int ion_iommu_heap_dump_size(void)
 	return ret;
 }
 
+static int ion_iommu_print_debug(struct ion_heap *heap, struct seq_file *s,
+				    const struct rb_root *mem_map)
+{
+	seq_printf(s, "Total bytes currently allocated: %d (%x)\n",
+		atomic_read(&v), atomic_read(&v));
+
+	if (mem_map) {
+		struct rb_node *n;
+
+		seq_printf(s, "\nBuffer Info\n");
+		seq_printf(s, "%16.s %16.s %14.s\n",
+			   "client", "creator", "size (hex)");
+
+		for (n = rb_first(mem_map); n; n = rb_next(n)) {
+			struct mem_map_data *data =
+					rb_entry(n, struct mem_map_data, node);
+			const char *client_name = "(null)";
+			const char *creator_name = "(null)";
+
+			if (data->client_name)
+				client_name = data->client_name;
+
+			if (data->creator_name)
+				creator_name = data->creator_name;
+
+			seq_printf(s, "%16.s %16.s %14lu (%lx)\n",
+				   client_name, creator_name, data->size, data->size);
+		}
+	}
+	return 0;
+}
+
 void *ion_iommu_heap_map_kernel(struct ion_heap *heap,
 				struct ion_buffer *buffer)
 {
@@ -348,6 +380,7 @@ static struct ion_heap_ops iommu_heap_ops = {
 	.cache_op = ion_iommu_cache_ops,
 	.map_dma = ion_iommu_heap_map_dma,
 	.unmap_dma = ion_iommu_heap_unmap_dma,
+	.print_debug = ion_iommu_print_debug,
 };
 
 struct ion_heap *ion_iommu_heap_create(struct ion_platform_heap *heap_data)

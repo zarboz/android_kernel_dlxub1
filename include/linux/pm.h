@@ -28,10 +28,6 @@
 #include <linux/timer.h>
 #include <linux/completion.h>
 
-#if defined(CONFIG_MACH_DUMMY)
-extern struct device * p_dbg_msm_hsic_host;
-#endif
-
 extern void (*pm_idle)(void);
 extern void (*pm_power_off)(void);
 extern void (*pm_power_off_prepare)(void);
@@ -232,15 +228,17 @@ struct dev_pm_info {
 	ktime_t			suspend_time;
 	s64			max_time_suspended_ns;
 	struct dev_pm_qos_request *pq_req;
+	
+	
+	#if defined(CONFIG_USB_EHCI_MSM_HSIC)
+	unsigned int		htc_hsic_dbg_enable:1;
+	#endif	
+	
+	
 #endif
 	struct pm_subsys_data	*subsys_data;  
 	struct pm_qos_constraints *constraints;
 
-#if defined(CONFIG_MACH_DUMMY)
-	int runtime_rpm_resume_footprint;
-	int runtime_rpm_resume_footprint2;
-	int runtime_pm_runtime_work_footprint;
-#endif
 };
 
 extern void update_pm_runtime_accounting(struct device *dev);

@@ -74,8 +74,8 @@ ENTRY(msm_secondary_startup)
 	dsb
 
 	ldr	r1, =CPU_FOOT_PRINT_BASE_CPU0_PHY
-	ldr	r2, =0xACBDFE04	/* make status number. */
-	str	r2, [r1, r0, LSL #2]
+	mov	r2, #5
+	strb	r2, [r1, r0, LSL #2] /* write footprint 5 */
 	dsb
 
 	adr	r4, 1f			@ address of

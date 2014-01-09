@@ -226,6 +226,11 @@ enum rawchip_enable_type {
 	RAWCHIP_MIPI_BYPASS,
 };
 
+enum hdr_mode_type {
+	NON_HDR_MODE,
+	HDR_MODE,
+};
+
 enum msm_camera_type {
 	BACK_CAMERA_2D,
 	FRONT_CAMERA_2D,
@@ -302,6 +307,13 @@ struct msm_camera_i2c_conf {
 	enum msm_camera_i2c_mux_mode i2c_mux_mode;
 };
 
+enum msm_camera_pixel_order_default {
+	MSM_CAMERA_PIXEL_ORDER_GR,
+	MSM_CAMERA_PIXEL_ORDER_RG,
+	MSM_CAMERA_PIXEL_ORDER_BG,
+	MSM_CAMERA_PIXEL_ORDER_GB,
+};
+
 struct msm_camera_sensor_platform_info {
 	int mount_angle;
 	int sensor_reset;
@@ -317,6 +329,7 @@ struct msm_camera_sensor_platform_info {
 	int vcm_pwd;
 	int vcm_enable;
 	int privacy_light;
+	enum msm_camera_pixel_order_default pixel_order_default;	
 	enum sensor_flip_mirror_info mirror_flip;
 	void *privacy_light_info;
 	
@@ -343,11 +356,36 @@ struct msm_actuator_info {
 	
 	int use_rawchip_af;
 	
+	
+	int otp_diviation;
+	
+	
+	void (*vcm_wa_vreg_on) (void);
+	void (*vcm_wa_vreg_off) (void);
+	
+	
+	void (*oisbinder_i2c_add_driver) (void* i2c_client);
+	void (*oisbinder_open_init) (void);
+	void (*oisbinder_power_down) (void);
+	int32_t (*oisbinder_act_set_ois_mode) (int ois_mode);
+	int32_t (*oisbinder_mappingTbl_i2c_write) (int startup_mode, void * sensor_actuator_info);
+	
 };
 
 struct msm_eeprom_info {
 	struct i2c_board_info const *board_info;
 	int bus_id;
+};
+
+enum htc_camera_image_type_board {
+	HTC_CAMERA_IMAGE_NONE_BOARD,
+	HTC_CAMERA_IMAGE_YUSHANII_BOARD,
+	HTC_CAMERA_IMAGE_MAX_BOARD,
+};
+
+enum cam_vcm_onoff_type {
+       STATUS_OFF,
+       STATUS_ON,
 };
 
 struct msm_camera_sensor_info {
@@ -381,7 +419,11 @@ struct msm_camera_sensor_info {
 	struct msm_camera_gpio_conf *gpio_conf;
 	int (*camera_power_on)(void);
 	int (*camera_power_off)(void);
+	void (*camera_yushanii_probed)(enum htc_camera_image_type_board);
+	enum htc_camera_image_type_board htc_image;	
 	int use_rawchip;
+	int hdr_mode;
+	int video_hdr_capability;
 #if 1 
 	
 	void(*camera_clk_switch)(void);
@@ -400,6 +442,7 @@ struct msm_camera_sensor_info {
 	uint8_t (*preview_skip_frame)(void);
 #endif
 	
+	int sensor_cut;
 
 };
 
@@ -495,6 +538,7 @@ struct msm_panel_common_pdata {
 	unsigned num_mdp_clk;
 	int *mdp_core_clk_table;
 	u32 mdp_max_clk;
+	u32 mdp_min_clk;
 #ifdef CONFIG_MSM_BUS_SCALING
 	struct msm_bus_scale_pdata *mdp_bus_scale_table;
 #endif
@@ -541,6 +585,7 @@ struct mipi_dsi_platform_data {
 	int (*get_lane_config)(void);
 	char (*splash_is_enabled)(void);
 	int target_type;
+	int (*deferred_reset_driver_ic)(void);
 };
 
 enum mipi_dsi_3d_ctrl {
@@ -554,6 +599,11 @@ struct mipi_dsi_phy_ctrl {
 	uint32_t ctrl[4];
 	uint32_t strength[4];
 	uint32_t pll[21];
+};
+
+struct mipi_dsi_reg_set {
+	uint32_t reg;
+	uint32_t value;
 };
 
 struct mipi_dsi_panel_platform_data {

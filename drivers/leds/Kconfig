@@ -317,6 +317,11 @@ config LEDS_PM8038
           To compile this driver as a module, choose M here: the module will
           be called leds-pmic8038.
 
+config PM8038_LED_SYNC
+        tristate "Button Backlight LED Sync for Qualcomm PMIC8038"
+        depends on MFD_PM8XXX
+        help
+
 config LEDS_PCA9633
 	tristate "LED support for PCA9633 I2C chip"
 	depends on LEDS_CLASS
@@ -600,6 +605,13 @@ config LEDS_TRIGGER_DEFAULT_ON
 
 config FLASHLIGHT_TPS61310
         tristate "TI TPS61310 flashlight"
+        help
+          Say Y here to enable the TI TPS61310 flashlight
+
+config FLASHLIGHT_1500mA
+	bool "FLASHLIGHT_1500mA"
+	depends on FLASHLIGHT_TPS61310
+	default n
         help
           Say Y here to enable the TI TPS61310 flashlight
 

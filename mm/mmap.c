@@ -1,3 +1,10 @@
+/*
+ * mm/mmap.c
+ *
+ * Written by obz.
+ *
+ * Address space accounting code	<alan@lxorguk.ukuu.org.uk>
+ */
 
 #include <linux/slab.h>
 #include <linux/backing-dev.h>
@@ -883,7 +890,7 @@ int vma_wants_writenotify(struct vm_area_struct *vma)
 	if ((vm_flags & (VM_WRITE|VM_SHARED)) != ((VM_WRITE|VM_SHARED)))
 		return 0;
 
-	
+	/* The backer wishes to know when pages are first written to? */
 	if (vma->vm_ops && vma->vm_ops->page_mkwrite)
 		return 1;
 
@@ -1813,7 +1820,7 @@ void exit_mmap(struct mm_struct *mm)
 	while (vma)
 		vma = remove_vma(vma);
 
-	BUG_ON(mm->nr_ptes > (FIRST_USER_ADDRESS+PMD_SIZE-1)>>PMD_SHIFT);
+	WARN_ON(mm->nr_ptes > (FIRST_USER_ADDRESS+PMD_SIZE-1)>>PMD_SHIFT);
 }
 
 int insert_vm_struct(struct mm_struct * mm, struct vm_area_struct * vma)

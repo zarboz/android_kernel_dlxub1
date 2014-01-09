@@ -70,11 +70,15 @@ static int state_onchg;
 #ifdef CONFIG_EARLYSUSPEND_BOOST_CPU_SPEED
 
 extern int skip_cpu_offline;
+int has_boost_cpu_func = 0;
 
 static void __ref boost_cpu_speed(int boost)
 {
 	unsigned long max_wait;
 	unsigned int cpu = 0, isfound = 0;
+
+	if (!has_boost_cpu_func)
+		return;
 
 	if (boost) {
 		skip_cpu_offline = 1;
@@ -137,9 +141,20 @@ void unregister_early_suspend(struct early_suspend *handler)
 }
 EXPORT_SYMBOL(unregister_early_suspend);
 
+#define EARLY_SUSPEND_TIMEOUT_VALUE 5
+static void early_suspend_handlers_timeout(unsigned long data)
+{
+	printk(KERN_EMERG "**** early_suspend_handlers %d secs timeout: %pf ****\n", \
+		EARLY_SUSPEND_TIMEOUT_VALUE, (void *)data);
+	pr_info("### Show Blocked State in ###\n");
+	show_state_filter(TASK_UNINTERRUPTIBLE);
+	BUG();
+}
+
 static void early_suspend(struct work_struct *work)
 {
 	struct early_suspend *pos;
+	struct timer_list timer;
 	unsigned long irqflags;
 	int abort = 0;
 
@@ -165,15 +180,26 @@ static void early_suspend(struct work_struct *work)
 
 	boost_cpu_speed(1);
 
+	init_timer_on_stack(&timer);
+	timer.function = early_suspend_handlers_timeout;
+
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("early_suspend: call handlers\n");
 	list_for_each_entry(pos, &early_suspend_handlers, link) {
 		if (pos->suspend != NULL) {
+			timer.expires = jiffies + HZ * EARLY_SUSPEND_TIMEOUT_VALUE;
+			timer.data = (unsigned long)pos->suspend;
+			add_timer(&timer);
+
 			if (debug_mask & DEBUG_VERBOSE)
 				pr_info("early_suspend: calling %pf\n", pos->suspend);
+
 			pos->suspend(pos);
+			del_timer_sync(&timer);
 		}
 	}
+
+	destroy_timer_on_stack(&timer);
 	boost_cpu_speed(0);
 	mutex_unlock(&early_suspend_lock);
 
@@ -198,6 +224,7 @@ abort:
 static void late_resume(struct work_struct *work)
 {
 	struct early_suspend *pos;
+	struct timer_list timer;
 	unsigned long irqflags;
 	int abort = 0;
 
@@ -221,18 +248,26 @@ static void late_resume(struct work_struct *work)
 	}
 
 	boost_cpu_speed(1);
+	init_timer_on_stack(&timer);
+	timer.function = early_suspend_handlers_timeout;
 
 	if (debug_mask & DEBUG_SUSPEND)
 		pr_info("late_resume: call handlers\n");
 	list_for_each_entry_reverse(pos, &early_suspend_handlers, link) {
 		if (pos->resume != NULL) {
+			timer.expires = jiffies + HZ * EARLY_SUSPEND_TIMEOUT_VALUE;
+			timer.data = (unsigned long)pos->suspend;
+			add_timer(&timer);
+
 			if (debug_mask & DEBUG_VERBOSE)
 				pr_info("late_resume: calling %pf\n", pos->resume);
 
 			pos->resume(pos);
+			del_timer_sync(&timer);
 		}
 	}
 
+	destroy_timer_on_stack(&timer);
 	boost_cpu_speed(0);
 
 	if (debug_mask & DEBUG_SUSPEND)

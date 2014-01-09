@@ -2000,12 +2000,24 @@ static int __devinit msm_slim_probe(struct platform_device *pdev)
 					dev->base + MGR_CFG);
 	else
 		writel_relaxed(MGR_CFG_ENABLE, dev->base + MGR_CFG);
+	/*
+	 * Make sure that manager-enable is written through before interface
+	 * device is enabled
+	 */
 	mb();
 	writel_relaxed(1, dev->base + INTF_CFG);
+	/*
+	 * Make sure that interface-enable is written through before enabling
+	 * ported generic device inside MSM manager
+	 */
 	mb();
 	writel_relaxed(1, dev->base + CFG_PORT(PGD_CFG, dev->ver));
 	writel_relaxed(0x3F<<17, dev->base + CFG_PORT(PGD_OWN_EEn, dev->ver) +
 				(4 * dev->ee));
+	/*
+	 * Make sure that ported generic device is enabled and port-EE settings
+	 * are written through before finally enabling the component
+	 */
 	mb();
 
 	writel_relaxed(1, dev->base + CFG_PORT(COMP_CFG, dev->ver));

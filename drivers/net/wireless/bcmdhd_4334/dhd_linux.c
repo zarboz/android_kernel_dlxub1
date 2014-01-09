@@ -430,7 +430,7 @@ module_param(dhd_master_mode, uint, 0);
 int dhd_watchdog_prio = 102;
 module_param(dhd_watchdog_prio, int, 0);
 
-int dhd_dpc_prio = 103;
+int dhd_dpc_prio = 0; 
 module_param(dhd_dpc_prio, int, 0);
 
 extern int dhd_dongle_memsize;
@@ -813,10 +813,7 @@ int dhdhtc_update_wifi_power_mode(int is_screen_off)
 		pm_type = PM_FAST;
 		dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&pm_type, sizeof(pm_type), TRUE, 0);
 	} else {
-		if (is_screen_off && !dhdcdc_wifiLock)
-			pm_type = PM_MAX;
-		else
-			pm_type = PM_FAST;
+		pm_type = PM_FAST;
 		printf("update pm: %s, wifiLock: %d\n", pm_type==1?"PM_MAX":"PM_FAST", dhdcdc_wifiLock);
 		dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&pm_type, sizeof(pm_type), TRUE, 0);
 	}
@@ -898,7 +895,9 @@ static void dhd_early_suspend(struct early_suspend *h)
 {
 	struct dhd_info *dhd = container_of(h, struct dhd_info, early_suspend);
 
-	DHD_TRACE(("%s: enter\n", __FUNCTION__));
+	DHD_ERROR(("%s: enter and skip it\n", __FUNCTION__));
+	
+	return ;
 
 	if (dhd)
 		dhd_suspend_resume_helper(dhd, 1, 0);
@@ -908,7 +907,9 @@ static void dhd_late_resume(struct early_suspend *h)
 {
 	struct dhd_info *dhd = container_of(h, struct dhd_info, early_suspend);
 
-	DHD_TRACE(("%s: enter\n", __FUNCTION__));
+	DHD_ERROR(("%s: enter and skip it\n", __FUNCTION__));
+	
+	return ;
 
 	if (dhd)
 		dhd_suspend_resume_helper(dhd, 0, 0);
@@ -1936,6 +1937,9 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 		struct dot11_llc_snap_header *lsh;
 #endif
 
+		pnext = PKTNEXT(dhdp->osh, pktbuf);
+		PKTSETNEXT(wl->sh.osh, pktbuf, NULL);
+
 		ifp = dhd->iflist[ifidx];
 		if (ifp == NULL) {
 			DHD_ERROR(("%s: ifp is NULL. drop packet\n",
@@ -1953,9 +1957,6 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt, uint8 chan)
 			continue;
 		}
 #endif
-
-		pnext = PKTNEXT(dhdp->osh, pktbuf);
-		PKTSETNEXT(wl->sh.osh, pktbuf, NULL);
 
 #ifdef WLBTAMP
 		eh = (struct ether_header *)PKTDATA(wl->sh.osh, pktbuf);
@@ -2331,16 +2332,62 @@ static inline void set_wlan_ioprio(void)
 }
 
 #ifdef DHDTHREAD
+
+#include <linux/sched.h>
+
+extern int multi_core_locked;
+
+static int
+rt_class(int priority)
+{
+	
+	return ((dhd_dpc_prio < MAX_RT_PRIO) && (dhd_dpc_prio != 0))? 1: 0;
+}
+
+static void
+adjust_thread_priority(void)
+{
+	struct sched_param param;
+	int ret = 0;
+
+	if (multi_core_locked) {
+		if ((current->on_cpu > 0) && !rt_class(dhd_dpc_prio)) {
+			param.sched_priority = dhd_dpc_prio = (MAX_RT_PRIO-1);
+			ret = setScheduler(current, SCHED_FIFO, &param);
+			printf("change dhd_dpc to SCHED_FIFO priority: %d, ret: %d", param.sched_priority, ret);
+		}
+	} else {
+		if (rt_class(dhd_dpc_prio)) {
+			param.sched_priority = dhd_dpc_prio = 0;
+			ret = setScheduler(current, SCHED_NORMAL, &param);
+			printf("change dhd_dpc to SCHED_NORMAL priority: %d, ret: %d", param.sched_priority, ret);
+		}
+	}
+}
+
 static int
 dhd_dpc_thread(void *data)
 {
 	tsk_ctl_t *tsk = (tsk_ctl_t *)data;
 	dhd_info_t *dhd = (dhd_info_t *)tsk->parent;
 
+	
+	
+	cpumask_t mask;
+
+	cpumask_clear(&mask);
+	cpumask_set_cpu(1, &mask);
+	cpumask_set_cpu(2, &mask);
+	cpumask_set_cpu(3, &mask);
+	if (sched_setaffinity(0, &mask) < 0) {
+		printf("sched_setaffinity failed");
+	}
+	
+
 	if (dhd_dpc_prio > 0)
 	{
 		struct sched_param param;
-		param.sched_priority = (dhd_dpc_prio < MAX_RT_PRIO)?dhd_dpc_prio:(MAX_RT_PRIO-1);
+		param.sched_priority = dhd_dpc_prio;
 		setScheduler(current, SCHED_FIFO, &param);
 	}
 
@@ -2361,6 +2408,9 @@ dhd_dpc_thread(void *data)
         }
         
 		if (down_interruptible(&tsk->sema) == 0) {
+			
+			adjust_thread_priority();
+			
 			if (dhd->dhd_force_exit== TRUE)
 				break;
 
@@ -3322,19 +3372,19 @@ printf("Read PCBID = %x\n", system_rev);
 	}
 #endif
 
-#ifdef CONFIG_MACH_DUMMY
+#ifdef CONFIG_MACH_DELUXE_J
 	if (system_rev >= PVT){
 		strcpy(nvram_path, "/system/etc/calibration.gpio4");
 	}
 #endif
 
-#ifdef CONFIG_MACH_DUMMY
+#ifdef CONFIG_MACH_DELUXE_U
 	if (system_rev >= PVT){
 		strcpy(nvram_path, "/system/etc/calibration.gpio4");
 	}
 #endif
 
-#ifdef CONFIG_MACH_DUMMY
+#ifdef CONFIG_MACH_IMPRESSION_J
 	if (system_rev >= XC){
 		strcpy(nvram_path, "/system/etc/calibration.gpio4");
 	}
@@ -3343,6 +3393,27 @@ printf("Read PCBID = %x\n", system_rev);
 #ifdef CONFIG_MACH_DELUXE_UB1
 	strcpy(nvram_path, "/system/etc/calibration.gpio4");
 #endif
+
+#ifdef CONFIG_MACH_OPERAUL
+	if (system_rev >= XC){
+		strcpy(nvram_path, "/system/etc/calibration.gpio4");
+	}
+#endif
+
+#ifdef CONFIG_MACH_DUMMY
+	if (system_rev >= PVT){
+		strcpy(nvram_path, "/system/etc/calibration.gpio4");
+	}
+#endif
+
+#ifdef CONFIG_MACH_DUMMY
+	strcpy(nvram_path, "/system/etc/calibration.gpio4");
+#endif
+
+#ifdef CONFIG_MACH_DUMMY
+	strcpy(nvram_path, "/system/etc/calibration.gpio4");
+#endif
+
 return 0;
 }
 
@@ -3764,9 +3835,15 @@ dhd_bus_start(dhd_pub_t *dhdp)
 }
 
 
+#ifdef CONFIG_METRICO_TP
+#define TRAFFIC_HIGH_WATER_MARK                1 *(3000/1000)
+#define TRAFFIC_LOW_WATER_MARK          0 * (3000/1000)
+#define TRAFFIC_S_HIGH_WATER_MARK	((TRAFFIC_HIGH_WATER_MARK) * 20)
+#else
 #define TRAFFIC_HIGH_WATER_MARK                670 *(3000/1000)
 #define TRAFFIC_LOW_WATER_MARK          280 * (3000/1000)
 #define TRAFFIC_S_HIGH_WATER_MARK	((TRAFFIC_HIGH_WATER_MARK) * 20)
+#endif
 
 extern dhd_pub_t *pdhd;
 
@@ -3807,6 +3884,9 @@ dhd_concurrent_fw(dhd_pub_t *dhd)
 #endif 
 }
 #endif 
+
+extern unsigned int get_tamper_sf(void);
+
 int
 dhd_preinit_ioctls(dhd_pub_t *dhd)
 {
@@ -3821,7 +3901,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint32 dongle_align = DHD_SDALIGN;
 	uint32 glom = CUSTOM_GLOM_SETTING;
 	uint32 txlazydelay = 0;
-	uint32 lvtrigtime = 6;
+	uint32 lvtrigtime = 250;
 #if defined(VSDB) || defined(ROAM_ENABLE)
 	uint bcn_timeout = 8;
 #else
@@ -3962,6 +4042,10 @@ int ht_wsec_restrict = WLC_HT_TKIP_RESTRICT | WLC_HT_WEP_RESTRICT;
 #if !defined(AP) && defined(WL_CFG80211)
 	
 	if ((!op_mode && strstr(fw_path, "_apsta") != NULL) || (op_mode == 0x02)) {
+#ifdef CONFIG_METRICO_TP
+			
+			dhd_bus_setidletime(dhd, 1000);
+#endif
 			
 			bcm_mkiovar("mpc", (char *)&mpc, 4, iovbuf, sizeof(iovbuf));
 			if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iovbuf,
@@ -3992,11 +4076,16 @@ int ht_wsec_restrict = WLC_HT_TKIP_RESTRICT | WLC_HT_WEP_RESTRICT;
 #endif
 	}
 
+	
+	if (get_tamper_sf() == 0)
 	DHD_ERROR(("Firmware up: op_mode=%d, "
 			"Broadcom Dongle Host Driver mac=%.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",
 			dhd->op_mode,
 			dhd->mac.octet[0], dhd->mac.octet[1], dhd->mac.octet[2],
 			dhd->mac.octet[3], dhd->mac.octet[4], dhd->mac.octet[5]));
+	else
+	DHD_ERROR(("Firmware up: op_mode=%d, Broadcom Dongle Host Driver\n",
+			dhd->op_mode));
 
 	
 	if (dhd->dhd_cspec.ccode[0] != 0) {
@@ -5484,9 +5573,11 @@ int net_os_set_suspend(struct net_device *dev, int val, int force)
 {
 	int ret = 0;
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
+	dhd_pub_t *dhdp = &dhd->pub;
 
 	if (dhd) {
 #if defined(CONFIG_HAS_EARLYSUSPEND)
+		dhdp->in_suspend = val ;
 		ret = dhd_set_suspend(val, &dhd->pub);
 #else
 		ret = dhd_suspend_resume_helper(dhd, val, force);

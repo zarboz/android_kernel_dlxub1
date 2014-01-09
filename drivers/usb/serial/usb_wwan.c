@@ -717,6 +717,11 @@ int usb_wwan_startup(struct usb_serial *serial)
 			dbg("%s: submit irq_in urb failed %d", __func__, err);
 	}
 	usb_wwan_setup_urbs(serial);
+
+	
+	serial->interface->needs_remote_wakeup = 1;
+	
+
 	return 0;
 
 bail_out_error2:

@@ -2596,6 +2596,10 @@ dhdsdio_readshared(dhd_bus_t *bus, sdpcm_shared_t *sh)
 
 		DHD_INFO(("sdpcm_shared address 0x%08X\n", addr));
 
+		/*
+		 * Check if addr is valid.
+		 * NVRAM length at the end of memory should have been overwritten.
+		 */
 		if (addr == 0 || ((~addr >> 16) & 0xffff) == (addr & 0xffff)) {
 			if ((bus->srmemsize > 0) && (i++ == 0)) {
 				shaddr -= bus->srmemsize;
@@ -3136,7 +3140,7 @@ dhdsdio_doiovar(dhd_bus_t *bus, const bcm_iovar_t *vi, uint32 actionid, const ch
 
 		
 		if (si_setcore(bus->sih, ARMCR4_CORE_ID, 0)) {
-			
+			/* if address is 0, store the reset instruction to be written in 0 */
 
 			if (address == 0) {
 				bus->resetinstr = *(((uint32*)params) + 2);
@@ -3552,7 +3556,7 @@ dhdsdio_write_vars(dhd_bus_t *bus)
 	uint8 *nvram_ularray;
 #endif 
 
-	
+	/* Even if there are no vars are to be written, we still need to set the ramsize. */
 	varsize = bus->varsz ? ROUNDUP(bus->varsz, 4) : 0;
 	varaddr = (bus->ramsize - 4) - varsize;
 
@@ -5414,6 +5418,9 @@ dhdsdio_hostmail(dhd_bus_t *bus)
 	if (hmb_data & HMB_DATA_FWHALT) {
 		DHD_ERROR(("INTERNAL ERROR: FIRMWARE HALTED\n"));
 		dhdsdio_checkdied(bus, NULL, 0);
+		bus->dhd->busstate = DHD_BUS_DOWN;
+		bus->intstatus = 0;
+		dhd_info_send_hang_message(bus->dhd);
 	}
 #endif 
 
@@ -5431,8 +5438,8 @@ dhdsdio_hostmail(dhd_bus_t *bus)
 	return intstatus;
 }
 
-extern int hotspot_hight_ind;
-extern int sta_hight_ind;
+extern int hotspot_high_ind;
+extern int sta_high_ind;
 
 static bool
 dhdsdio_dpc(dhd_bus_t *bus)
@@ -5446,7 +5453,9 @@ dhdsdio_dpc(dhd_bus_t *bus)
 	uint framecnt = 0;		  
 	bool rxdone = TRUE;		  
 	bool resched = FALSE;	  
+	
 	static ulong last_kick_jiffies = 0;
+	
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
@@ -5466,13 +5475,15 @@ dhdsdio_dpc(dhd_bus_t *bus)
 		goto exit;
 	}
 
-	if (hotspot_hight_ind || sta_hight_ind) {
+	
+	if (hotspot_high_ind || sta_high_ind) {
 		if (time_after(jiffies, last_kick_jiffies + 3*HZ)) {
 			pet_watchdog();
 			last_kick_jiffies = jiffies;
 			printf("%s: pet watchdog\n", __FUNCTION__);
 		}
 	}
+	
 
 	
 	if (!SLPAUTO_ENAB(bus) && (bus->clkstate == CLK_PENDING)) {
@@ -6309,6 +6320,8 @@ dhdsdio_chipmatch(uint16 chipid)
 	return FALSE;
 }
 
+bool dhd_attached = FALSE;
+
 static void *
 dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 	uint16 func, uint bustype, void *regsva, osl_t * osh, void *sdh)
@@ -6419,6 +6432,7 @@ dhdsdio_probe(uint16 venid, uint16 devid, uint16 bus_no, uint16 slot,
 		DHD_ERROR(("%s: dhd_attach failed\n", __FUNCTION__));
 		goto fail;
 	}
+	dhd_attached = TRUE;
 
 	
 	if (!(dhdsdio_probe_malloc(bus, osh, sdh))) {
@@ -7654,3 +7668,10 @@ concate_revision(dhd_bus_t *bus, char *path, int path_len)
 	DHD_ERROR(("REVISION SPECIFIC feature is not required\n"));
 }
 #endif 
+
+void dhd_bus_setidletime(dhd_pub_t *dhdp, int idle_time)
+{
+	struct dhd_bus *bus = dhdp->bus;
+
+	bus->idletime = idle_time;
+}

@@ -690,6 +690,8 @@ static ssize_t hdmi_3d_rda_format_3d(struct device *dev,
 	return ret;
 }
 
+extern void send_hdmi_uevent(void);
+
 static ssize_t hdmi_3d_wta_format_3d(struct device *dev,
 	struct device_attribute *attr, const char *buf, size_t count)
 {
@@ -708,7 +710,9 @@ static ssize_t hdmi_3d_wta_format_3d(struct device *dev,
 				external_common_state->format_3d);
 		}
 	} else {
-		DEV_DBG("%s: '%d' (unknown)\n", __func__, format_3d);
+		DEV_INFO("%s: '%d' (notify ready)\n", __func__, format_3d);
+		
+		send_hdmi_uevent();
 	}
 
 	return ret;

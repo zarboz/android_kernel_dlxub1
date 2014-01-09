@@ -325,6 +325,10 @@ struct transaction_s
 
 	struct journal_head	*t_shadow_list;
 
+	/*
+	 * Doubly-linked circular list of control buffers being written to the
+	 * log. [j_list_lock]
+	 */
 	struct journal_head	*t_log_list;
 
 	struct list_head	t_inode_list;
@@ -507,6 +511,9 @@ struct journal_s
 	unsigned int		j_failed_commit;
 
 	void *j_private;
+
+	
+	unsigned int		commit_callback_done;
 };
 
 #define JBD2_UNMOUNT	0x001	
@@ -542,6 +549,12 @@ void __jbd2_journal_insert_checkpoint(struct journal_head *, transaction_t *);
 
 
 struct jbd2_buffer_trigger_type {
+	/*
+	 * Fired a the moment data to write to the journal are known to be
+	 * stable - so either at the moment b_frozen_data is created or just
+	 * before a buffer is written to the journal.  mapped_data is a mapped
+	 * buffer that is the frozen data for commit.
+	 */
 	void (*t_frozen)(struct jbd2_buffer_trigger_type *type,
 			 struct buffer_head *bh, void *mapped_data,
 			 size_t size);
@@ -754,7 +767,7 @@ static inline int jbd_space_needed(journal_t *journal)
 #define BJ_Types	7
 
 extern int jbd_blocks_per_page(struct inode *inode);
-
+extern atomic_t vfs_emergency_remount;
 #ifdef __KERNEL__
 
 #define buffer_trace_init(bh)	do {} while (0)

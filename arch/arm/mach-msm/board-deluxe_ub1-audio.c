@@ -21,7 +21,7 @@
 #include <linux/module.h>
 #include "board-deluxe_ub1.h"
 #include "../sound/soc/msm/msm-pcm-routing.h"
-
+#include "../sound/soc/msm/msm-compr-q6.h"
 #include <linux/gpio.h>
 #include <mach/tpa6185.h>
 #include <mach/rt5501.h>
@@ -60,6 +60,11 @@ int apq8064_get_q6_effect_mode(void)
 	return mode;
 }
 
+int apq8064_get_24b_audio(void)
+{
+	return 1;
+}
+
 static struct acoustic_ops acoustic = {
         .enable_digital_mic = deluxe_ub1_enable_digital_mic,
         .get_hw_component = deluxe_ub1_get_hw_component,
@@ -72,6 +77,10 @@ static struct q6asm_ops qops = {
 
 static struct msm_pcm_routing_ops rops = {
 	.get_q6_effect = apq8064_get_q6_effect_mode,
+};
+
+static struct msm_compr_q6_ops cops = {
+	.get_24b_audio = apq8064_get_24b_audio,
 };
 
 static int __init deluxe_ub1_audio_init(void)
@@ -93,8 +102,9 @@ static int __init deluxe_ub1_audio_init(void)
 
 	htc_register_q6asm_ops(&qops);
 	htc_register_pcm_routing_ops(&rops);
+	htc_register_compr_q6_ops(&cops);
 	acoustic_register_ops(&acoustic);
-
+	pr_info("%s", __func__);
 	return ret;
 
 }

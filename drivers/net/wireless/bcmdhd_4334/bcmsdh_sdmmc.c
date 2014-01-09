@@ -1007,6 +1007,10 @@ sdioh_request_packet(sdioh_info_t *sd, uint fix_inc, uint write, uint func,
 		memset(&mmc_req, 0, sizeof(struct mmc_request));
 		memset(&mmc_cmd, 0, sizeof(struct mmc_command));
 		memset(&mmc_dat, 0, sizeof(struct mmc_data));
+        
+        
+        sg_init_table(sd->sg_list, SDIOH_SDMMC_MAX_SG_ENTRIES);
+        
 
 		
 		pprev = pkt;

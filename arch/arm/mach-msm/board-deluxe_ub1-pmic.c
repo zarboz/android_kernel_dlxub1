@@ -402,7 +402,11 @@ deluxe_ub1_pm8921_irq_pdata __devinitdata = {
 static struct pm8xxx_rtc_platform_data
 deluxe_ub1_pm8921_rtc_pdata = {
 	.rtc_write_enable       = true,
+#ifdef CONFIG_HTC_OFFMODE_ALARM
+	.rtc_alarm_powerup      = true,
+#else
 	.rtc_alarm_powerup      = false,
+#endif
 };
 
 static int deluxe_ub1_pm8921_therm_mitigation[] = {
@@ -453,7 +457,7 @@ pm8921_chg_pdata __devinitdata = {
 	.max_voltage		= MAX_VOLTAGE_MV,
 	.min_voltage		= 3200,
 	.resume_voltage_delta	= 50,
-	.term_current		= 50,
+	.term_current		= 75,
 	.cool_temp		= 0,
 	.warm_temp		= 48,
 	.temp_check_period	= 1,

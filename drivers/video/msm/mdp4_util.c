@@ -353,6 +353,7 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	struct mdp_hist_mgmt *mgmt = NULL;
 	char *base_addr;
 	int i, ret;
+	static unsigned long prev_jiffy = 0; 
 
 	mdp_is_in_isr = TRUE;
 
@@ -384,6 +385,17 @@ irqreturn_t mdp4_isr(int irq, void *ptr)
 	if (isr & INTR_EXTERNAL_INTF_UDERRUN) {
 		pr_debug("%s: UNDERRUN -- external\n", __func__);
 		mdp4_stat.intr_underrun_e++;
+	}
+
+	if (isr & (INTR_PRIMARY_INTF_UDERRUN|INTR_EXTERNAL_INTF_UDERRUN)) {
+		if (time_after(jiffies, prev_jiffy + 5 * HZ) || !prev_jiffy) {
+			pr_info("%s: UNDERRUN isr: 0x%x (pri: %lu, ext: %lu)\n",
+			     __func__, isr,
+			     mdp4_stat.intr_underrun_p, mdp4_stat.intr_underrun_e);
+
+			mdp4_overlay_mdp_perf_dump();
+			prev_jiffy = jiffies;
+		}
 	}
 
 	isr &= mask;
@@ -1119,6 +1131,16 @@ void mdp4_vg_qseed_init(int vp_num)
 	for (i = 0; i < (sizeof(vg_qseed_table0) / sizeof(uint32)); i++) {
 		outpdw(off, vg_qseed_table0[i]);
 		off++;
+		/* This code is added to workaround the 1K Boundary AXI
+		Interleave operations from Scorpion that can potentially
+		corrupt the QSEED table. The idea is to complete the prevous
+		to the buffer before making the next write when address is
+		1KB aligned to ensure the write has been committed prior to
+		next instruction write that can go out from  the secondary AXI
+		port.This happens also because of the expected write sequence
+		from QSEED table, where LSP has to be written first then the
+		MSP to trigger both to write out to SRAM, if this has not been
+		the expectation, then corruption wouldn't have happened.*/
 
 		if (!((uint32)off & 0x3FF))
 			wmb();
@@ -2840,7 +2862,7 @@ int mdp4_pcc_cfg(struct mdp_pcc_cfg_data *cfg_ptr)
 		break;
 
 	default:
-		break;
+		return ret;
 	}
 
 	if (0x8 & cfg_ptr->ops)

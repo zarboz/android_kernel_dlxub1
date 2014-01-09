@@ -121,14 +121,16 @@ static void onewire_init_work_func(struct work_struct *work)
 {
 	HS_LOG("Open %s", hi->pdata.onewire_tty_dev);
 	fp = openFile(hi->pdata.onewire_tty_dev,O_CREAT|O_RDWR|O_NONBLOCK,0666);
-	if (!fp->private_data)
-		HS_LOG("No private data");
-	else {
-		HS_LOG("Private data exist");
+	if (fp != NULL) {
+		if (!fp->private_data)
+			HS_LOG("No private data");
+		else {
+			HS_LOG("Private data exist");
+		}
 		closeFile(fp);
 		return;
-	}
-	closeFile(fp);
+	} else
+		HS_LOG("%s, openFile is NULL pointer\n", __func__);
 }
 
 static void onewire_closefile_work_func(struct work_struct *work)
@@ -208,14 +210,19 @@ static int hs_1wire_init(void)
 	HS_LOG("[1-wire]hs_1wire_init");
 	fp = openFile(hi->pdata.onewire_tty_dev,O_CREAT|O_RDWR|O_SYNC|O_NONBLOCK,0666);
 	HS_LOG("Open %s", hi->pdata.onewire_tty_dev);
-	if (!fp->private_data) {
-		HS_LOG("No private data");
-		if (hi->pdata.tx_level_shift_en)
-			gpio_set_value_cansleep(hi->pdata.tx_level_shift_en, 1);
-		if (hi->pdata.uart_sw)
-			gpio_set_value_cansleep(hi->pdata.uart_sw, 0);
-		hi->aid = 0;
-		closeFile(fp);
+	if (fp != NULL) {
+		if (!fp->private_data) {
+			HS_LOG("No private data");
+			if (hi->pdata.tx_level_shift_en)
+				gpio_set_value_cansleep(hi->pdata.tx_level_shift_en, 1);
+			if (hi->pdata.uart_sw)
+				gpio_set_value_cansleep(hi->pdata.uart_sw, 0);
+			hi->aid = 0;
+			closeFile(fp);
+			return -1;
+		}
+	} else {
+		HS_LOG("%s, openFile is NULL pointer\n", __func__);
 		return -1;
 	}
 	setup_hs_tty(fp);

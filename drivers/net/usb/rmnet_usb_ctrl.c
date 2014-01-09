@@ -26,6 +26,9 @@
 #define NUM_CTRL_CHANNELS		4
 #define DEFAULT_READ_URB_LENGTH		0x1000
 
+#define HTC_RMNET_IOCTL_DEFINE 0xCC
+#define HTC_RMNET_USB_SET_ITC _IOW(HTC_RMNET_IOCTL_DEFINE, 201, int)
+
 #define ACM_CTRL_DTR		BIT(0)
 #define ACM_CTRL_RTS		BIT(1)
 
@@ -727,6 +730,7 @@ static int rmnet_usb_ctrl_write(struct rmnet_ctrl_dev *dev, char *buf,
 		usb_free_urb(sndurb);
 		kfree(out_ctlreq);
 #ifdef HTC_DEBUG_QMI_STUCK
+		del_timer(&context->timer);
 		kfree(context);
 #endif	
 		return result;
@@ -744,8 +748,10 @@ static int rmnet_ctl_open(struct inode *inode, struct file *file)
 	if (!dev)
 		return -ENODEV;
 
-	if (dev->is_opened)
+	if (dev->is_opened) {
+		file->private_data = dev;
 		goto already_opened;
+	}
 
 	
 	if (dev->is_connected) {
@@ -1031,6 +1037,11 @@ static long rmnet_ctrl_ioctl(struct file *file, unsigned int cmd,
 		break;
 	case TIOCMSET:
 		ret = rmnet_ctrl_tiocmset(dev, arg, ~arg);
+		break;
+	case HTC_RMNET_USB_SET_ITC:
+		{
+			ret = 0;
+		}
 		break;
 	default:
 		ret = -EINVAL;

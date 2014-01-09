@@ -582,6 +582,11 @@ static int tcp_packet(struct nf_conn *ct,
 	th = skb_header_pointer(skb, dataoff, sizeof(_tcph), &_tcph);
 	BUG_ON(th == NULL);
 
+	if ((!ct) || IS_ERR(ct) || (!(&ct->lock)) || IS_ERR(&ct->lock)) {
+		printk(KERN_DEBUG "[NET][WARN] ethan_ge tb is illegal in %s \n", __func__);
+		return NF_DROP;
+	}
+
 	spin_lock_bh(&ct->lock);
 	old_state = ct->proto.tcp.state;
 	dir = CTINFO2DIR(ctinfo);

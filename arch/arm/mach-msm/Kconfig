@@ -102,33 +102,6 @@ config ARCH_MSM8X60
 	select MSM_QDSP6_APR
 	select MSM_QDSP6_CODECS
 	select MSM_NATIVE_RESTART
-	select ARCH_INLINE_SPIN_TRYLOCK
-	select ARCH_INLINE_SPIN_TRYLOCK_BH
-	select ARCH_INLINE_SPIN_LOCK
-	select ARCH_INLINE_SPIN_LOCK_BH
-	select ARCH_INLINE_SPIN_LOCK_IRQ
-	select ARCH_INLINE_SPIN_LOCK_IRQSAVE
-	select ARCH_INLINE_SPIN_UNLOCK
-	select ARCH_INLINE_SPIN_UNLOCK_BH
-	select ARCH_INLINE_SPIN_UNLOCK_IRQ
-	select ARCH_INLINE_SPIN_UNLOCK_IRQRESTORE
-	select ARCH_INLINE_READ_TRYLOCK
-	select ARCH_INLINE_READ_LOCK
-	select ARCH_INLINE_READ_LOCK_BH
-	select ARCH_INLINE_READ_LOCK_IRQ
-	select ARCH_INLINE_READ_LOCK_IRQSAVE
-	select ARCH_INLINE_READ_UNLOCK
-	select ARCH_INLINE_READ_UNLOCK_BH
-	select ARCH_INLINE_READ_UNLOCK_IRQ
-	select ARCH_INLINE_READ_UNLOCK_IRQRESTORE
-	select ARCH_INLINE_WRITE_TRYLOCK
-	select ARCH_INLINE_WRITE_LOCK
-	select ARCH_INLINE_WRITE_LOCK_BH
-	select ARCH_INLINE_WRITE_LOCK_IRQ
-	select ARCH_INLINE_WRITE_LOCK_IRQSAVE
-	select ARCH_INLINE_WRITE_UNLOCK
-	select ARCH_INLINE_WRITE_UNLOCK_BH
-	select ARCH_INLINE_WRITE_UNLOCK_IRQRESTORE
 	select CPU_HAS_L2_PMU
 	select MSM_SPM_V1
 	select MSM_SCM if SMP
@@ -173,7 +146,6 @@ config ARCH_MSM8960
 	select MSM_RUN_QUEUE_STATS
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
-	select MSM_IOMMU_GPU_SYNC
 
 config ARCH_MSM8930
 	bool "MSM8930"
@@ -235,6 +207,36 @@ config ARCH_APQ8064
 	select ARM_HAS_SG_CHAIN
 	select MSM_KRAIT_WFE_FIXUP
 	select MSM_IOMMU_GPU_SYNC
+	select MSM_CPU_PWRCTL
+
+config ARCH_APQ8064_M7
+	bool "APQ8064_M7"
+	select ARCH_MSM_KRAITMP
+	select GPIO_MSM_V2
+	select ARM_GIC
+	select CPU_V7
+	select MSM_SCM if SMP
+	select MSM_GPIOMUX
+	select MSM_REMOTE_SPINLOCK_SFPB
+	select MSM_PIL
+	select MSM_QDSP6_APR
+	select MSM_QDSP6_CODECS
+	select MSM_AUDIO_QDSP6 if SND_SOC
+	select MULTI_IRQ_HANDLER
+	select MSM_RPM
+	select MSM_SPM_V2
+	select MSM_L2_SPM
+	select MSM_PM8X60 if PM
+	select CPU_HAS_L2_PMU
+	select HOLES_IN_ZONE if SPARSEMEM
+	select CLEANCACHE
+	select QCACHE
+	select MIGHT_HAVE_PCI
+	select ARCH_SUPPORTS_MSI
+	select ARM_HAS_SG_CHAIN
+	select MSM_KRAIT_WFE_FIXUP
+	select MSM_CPU_PWRCTL
+	select MSM_IOMMU_GPU_SYNC
 
 config ARCH_MSM8974
 	bool "MSM8974"
@@ -283,6 +285,60 @@ config MACH_JET
 	bool "Jet"
 	help
 	  Support for the HTC Jet
+
+config MACH_JEWEL_DD
+        depends on ARCH_MSM8960
+        bool "Jel_dd"
+        help
+          Support for the HTC Jewel_DD
+
+config MACH_VALENTE_WX
+	depends on ARCH_MSM8960
+	bool "Valente#WX"
+	help
+	  Support for the HTC Valente#WX
+
+config MACH_VALENTE_WX_C9
+	depends on ARCH_MSM8960
+	bool "Valente#WX_C9"
+	help
+	  Support for the HTC Valente#WX_C9
+
+config MACH_K2_CL
+	depends on ARCH_MSM8930
+	bool "K2_CL"
+	help
+	  Support for the HTC K2_#CL
+
+config MACH_K2_PLC_CL
+	depends on ARCH_MSM8930
+	bool "K2_PLC_CL"
+	help
+	  Support for the HTC K2_PLC#CL
+
+config MACH_K2_U
+	depends on ARCH_MSM8930
+	bool "K2_U"
+	help
+	  Support for the HTC K2_U
+
+config MACH_K2_UL
+	depends on ARCH_MSM8930
+	bool "K2_UL"
+	help
+	  Support for the HTC K2_UL
+
+config MACH_EVITA_UTL
+        depends on ARCH_MSM8960
+        bool "Evita#UTL"
+        help
+          Support for the HTC Evita#UTL
+
+config MACH_OPERAUL
+	depends on ARCH_MSM8930
+	bool "OPERAUL"
+	help
+	  Support for the HTC OPERAUL
 
 config ARCH_FSM9XXX
 	bool "FSM9XXX"
@@ -450,9 +506,14 @@ config PERFLOCK
         default n
         bool "HTC Performance Lock"
 
+config PERFLOCK_FIX_UP
+        depends on CPU_FREQ
+        depends on PERFLOCK
+        default y
+        bool "HTC Performance Lock Fix Up"
+
 config PERFLOCK_BOOT_LOCK
         depends on PERFLOCK
-        depends on ARCH_APQ8064 || ARCH_MSM8960 || ARCH_MSM8930 || ARCH_MSM8X60 || ARCH_QSD8X50 || ARCH_MSM7X30 || ARCH_MSM7X00A || ARCH_MSM7227 || ARCH_MSM7225
         default n
         bool "Boot Time Performance Lock"
 
@@ -928,8 +989,8 @@ config PHYS_OFFSET
 	hex "Kernel Physical Start Address"
 	default "0x40800000" if ARCH_MSM9615
 	default "0x80600000" if ARCH_APQ8064
+	default "0x80600000" if ARCH_MSM8930
 	default "0x80400000" if ARCH_MSM8960
-	default "0x80400000" if ARCH_MSM8930
 	default "0x00000000" if ARCH_MSM8974
 	default "0x10000000" if ARCH_FSM9XXX
 	default "0x20200000" if ARCH_MSM9625
@@ -1089,6 +1150,10 @@ config HTC_ONMODE_CHARGING
 	default n
 	help
 		support on mode charing icon
+
+config HTC_FD_MONITOR
+	bool "fd operation monitor mechanism"
+	default n
 
 choice
 	prompt "Default Timer"
@@ -1279,6 +1344,12 @@ config HTC_PWRSINK
 	default n
 	bool "HTC Power Sink Driver"
 
+config BUILD_OMA_DM
+	bool "Build in OMA-DM fixes"
+	default n
+	help
+	  For OMA-DM we need to do some additional fixes.
+
 config QSD_SVS
 	bool "QSD Static Voltage Scaling"
 	depends on (MACH_QSD8X50_SURF || MACH_QSD8X50_FFA)
@@ -1382,6 +1453,12 @@ config MSM_SMD_DEBUG
 	help
 	  Support for debugging the SMD for communication
 	  between the ARM9 and ARM11
+
+config MSM_SEND_SIGNAL_DEBUG
+        bool "MSM send_signal debug support"
+        help
+          This option enables kernel debug log and dump_stack
+          if any processes send signal to assinged processes
 
 config MSM_SDIO_AL
 	depends on ((ARCH_MSM7X30 || MACH_MSM8X60_FUSN_FFA || MACH_TYPE_MSM8X60_FUSION) && HAS_WAKELOCK)
@@ -1807,6 +1884,13 @@ config WIFI_MEM_PREALLOC
 	help
 	  Preallocates memory buffers for WiFi driver
 
+config HTC_BATT_ALARM
+        bool "Enable 3.0V device shutdown mechanism"
+        depends on HAS_EARLYSUSPEND
+        default n
+        help
+          Enable 3.0V triggeer level 0 shutdown rule
+
 config QSD_AUDIO
 	bool "QSD audio"
 	depends on ARCH_MSM_SCORPION && MSM_DALRPC && ANDROID_PMEM && !MSM_SMP
@@ -2109,7 +2193,7 @@ config MSM_LPASS_SSR_ENABLE
 
 config MSM_WCNSS_SSR_ENABLE
 	bool "MSM 8960 WCNSS subsystem restart enable"
-	depends on (ARCH_MSM8960 && MSM_SSR_INDEPENDENT)
+	depends on (ARCH_MSM8960)
 	help
 	 This option enables the WCNSS subsystem restart for MSM8960
 
@@ -2227,6 +2311,11 @@ config MSM_BUS_RPM_MULTI_TIER_ENABLED
 	bool "RPM Multi-tiering Configuration"
 	depends on MSM_BUS_SCALING
 
+config MSM_BUS_RPM_VDDCX_SCALING_ENABLED
+	bool "RPM VDDCX scaling Configuration"
+	depends on MSM_BUS_SCALING
+	default n
+
 config MSM_WATCHDOG
 	bool "MSM Watchdog Support"
 	depends on ARCH_MSM8X60 || ARCH_MSM8960 || ARCH_MSM9615 || ARCH_FSM9XXX
@@ -2340,6 +2429,7 @@ config MSM_FAKE_BATTERY
 		 Enables MSM fake battery driver.
 
 config APQ8064_ONLY
+		depends on ARCH_APQ8064
 		default n
 		bool "ARCH APQ8064 only"
 		help
@@ -2588,6 +2678,20 @@ config MSM_CACHE_DUMP
 	  This allows for analysis of the caches in case cache corruption is
 	  suspected.
 
+config ACPU_CUSTOM_FREQ_SUPPORT
+	bool "Custom frequency support"
+	default n
+	help
+	  Adds support for custom frequency table adjustments.
+
+config ACPU_MAX_FREQ
+	int "Maximum supported frequency"
+	depends on ACPU_CUSTOM_FREQ_SUPPORT
+	default 0
+	help
+	  If set to non-zero number, will search for this frequency in
+	  frequency table and set as maximum supported frequency if found.
+
 config MSM_CACHE_DUMP_ON_PANIC
 	bool "Dump caches on panic"
 	depends on MSM_CACHE_DUMP
@@ -2620,11 +2724,95 @@ config MACH_MONARUDO
 	help
 	  Support for the HTC APQ8064 MONARUDO.
 
+config MACH_DELUXE_J
+        depends on ARCH_APQ8064
+        bool "APQ8064 DELUXE_J"
+        help
+          Support for the HTC APQ8064 DELUXE_J.
+
 config MACH_DELUXE_UB1
         depends on ARCH_APQ8064
         bool "APQ8064 DELUXE_UB1"
         help
           Support for the HTC APQ8064 DELUXE_UB1.
+
+config MACH_DELUXE_U
+        depends on ARCH_APQ8064
+        bool "APQ8064 DELUXE_U"
+        help
+          Support for the HTC APQ8064 DELUXE_U.
+
+config MACH_DELUXE_UL
+        depends on ARCH_APQ8064
+        bool "APQ8064 DELUXE_UL"
+        help
+          Support for the HTC APQ8064 DELUXE_UL.
+
+config MACH_IMPRESSION_J
+        depends on ARCH_APQ8064
+        bool "APQ8064 IMPRESSION_J"
+        help
+          Support for the HTC APQ8064 IMPRESSION_J.
+
+config MACH_M7_UL
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_UL"
+        help
+          Support for the HTC APQ8064 M7_UL.
+
+config MACH_M7_U
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_U"
+        help
+          Support for the HTC APQ8064 M7_U.
+
+config MACH_M7_WLS
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_WLS"
+        help
+          Support for the HTC APQ8064 M7_WLS.
+
+config MACH_M7_WLV
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_WLV"
+        help
+          Support for the HTC APQ8064 M7_WLV.
+
+config MACH_M7_DCG
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_DCG"
+        help
+          Support for the HTC APQ8064 M7_DCG.
+
+config MACH_M7_DUG
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_DUG"
+        help
+          Support for the HTC APQ8064 M7_DUG.
+
+config MACH_M7_DXG
+        depends on ARCH_APQ8064
+        bool "APQ8064 M7_DXG"
+        help
+          Support for the HTC APQ8064 M7_DXG.
+
+config MACH_T6_DXG
+        depends on ARCH_APQ8064
+        bool "APQ8064 T6_DXG"
+        help
+          Support for the HTC APQ8064 T6_DXG.
+
+config QSC_MODEM
+        default n
+        bool "QMC QSC MODEM"
+        help
+          Support for the QMC QSC Modem.
+
+config MACH_VILLEC2
+        depends on ARCH_MSM8X60
+        bool "VILLEC2"
+        help
+          Support for the HTC VILLEC2 device.
 
 config HTC_HEADSET_ONE_WIRE
 	tristate "HTC 1-wire headset detection driver"
@@ -2655,5 +2843,31 @@ config IO_FOOTPRINT
 	default n
 	help
 	  Provides support for light-weight tracing of CPU register read/write
+
+config BT_WBS_BRCM
+        bool "BRCM HFP WBS support"
+        depends on BT
+        help
+         To add support for BRCM BT HFP_1.6 WBS
+
+config HTC_POWEROFF_MODEM_IN_OFFMODE_CHARGING
+        bool "power off modem in offmode charging"
+        depends on MSM_MODEM_8960
+        help
+         To power off modem in offmode charging
+
+config HTC_STORE_MODEM_RESET_INFO
+        bool "For store modem reset information"
+        depends on MSM_MODEM_8960
+        help
+         To store modem reset information
+
+config MSM_CPU_PWRCTL
+	bool "Ensures that krait droop detectors are always off"
+	help
+	  Droop detector mechanism can adversely affect krait plls during
+	  stand alone power collapse operation. Selecting this option
+	  ensures that they are always off.
+
 endif
 

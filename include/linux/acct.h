@@ -24,6 +24,12 @@
 typedef __u16	comp_t;
 typedef __u32	comp2_t;
 
+/*
+ *   accounting file record
+ *
+ *   This structure contains all of the information written out to the
+ *   process accounting file whenever a process exits.
+ */
 
 #define ACCT_COMM	16
 
@@ -41,7 +47,7 @@ struct acct
 	comp_t		ac_etime;		
 	comp_t		ac_mem;			
 	comp_t		ac_io;			
-	comp_t		ac_rw;			
+	comp_t		ac_rw;			/* Blocks Read or Written */
 	comp_t		ac_minflt;		
 	comp_t		ac_majflt;		
 	comp_t		ac_swaps;		
@@ -76,7 +82,7 @@ struct acct_v3
 	comp_t		ac_stime;		
 	comp_t		ac_mem;			
 	comp_t		ac_io;			
-	comp_t		ac_rw;			
+	comp_t		ac_rw;			/* Blocks Read or Written */
 	comp_t		ac_minflt;		
 	comp_t		ac_majflt;		
 	comp_t		ac_swaps;		

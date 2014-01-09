@@ -156,6 +156,13 @@ fail:
 	return retval;
 }
 
+int rmnet_usb_reset_resume(struct usb_interface *intf)
+{
+	pr_info("%s intf %p\n", __func__, intf);
+	return rmnet_usb_resume(intf);
+}
+
+
 static int rmnet_usb_bind(struct usbnet *usbnet, struct usb_interface *iface)
 {
 	struct usb_host_endpoint	*endpoint = NULL;
@@ -654,6 +661,7 @@ static struct usb_driver rmnet_usb = {
 	.disconnect = rmnet_usb_disconnect,
 	.suspend    = rmnet_usb_suspend,
 	.resume     = rmnet_usb_resume,
+	.reset_resume     = rmnet_usb_reset_resume,
 	.supports_autosuspend = true,
 };
 

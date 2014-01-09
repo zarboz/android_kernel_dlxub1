@@ -347,19 +347,6 @@ static struct smb349_platform_data smb349_data = {
 	.chg_current_ma = 0,
 };
 
-#ifdef CONFIG_SUPPORT_DQ_BATTERY
-static int __init check_dq_setup(char *str)
-{
-	if (!strcmp(str, "PASS"))
-		smb349_data.dq_result = 1;
-	else
-		smb349_data.dq_result = 0;
-
-	return 1;
-}
-__setup("androidboot.dq=", check_dq_setup);
-#endif
-
 static struct i2c_board_info msm_smb_349_boardinfo[] __initdata = {
 	{
 		I2C_BOARD_INFO("smb349", 0xD4 >> 1),
@@ -1013,12 +1000,18 @@ static void __init deluxe_ub1_early_reserve(void)
 }
 
 #ifdef CONFIG_HTC_BATT_8960
+#ifdef CONFIG_HTC_PNPMGR
+extern int pnpmgr_battery_charging_enabled(int charging_enabled);
+#endif 
+static int critical_alarm_voltage_mv[] = {3000, 3200, 3400};
+
 static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.guage_driver = 0,
 	.chg_limit_active_mask = HTC_BATT_CHG_LIMIT_BIT_TALK |
 								HTC_BATT_CHG_LIMIT_BIT_NAVI,
 	.critical_low_voltage_mv = 3100,
-	.critical_alarm_voltage_mv = 3000,
+	.critical_alarm_vol_ptr = critical_alarm_voltage_mv,
+	.critical_alarm_vol_cols = sizeof(critical_alarm_voltage_mv) / sizeof(int),
 	.overload_vol_thr_mv = 4000,
 	.overload_curr_thr_ma = 0,
 	
@@ -1026,6 +1019,7 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.icharger.name = "smb349",
 	.icharger.sw_safetytimer = 1,
 	.icharger.set_limit_charge_enable = smb349_limit_charge_enable,
+	.icharger.is_batt_charge_enable =  smb349_is_batt_charge_enable,
 	.icharger.get_attr_text = pm8921_charger_get_attr_text_with_ext_charger,
 	.icharger.enable_5v_output = smb349_enable_5v_output,
 #else
@@ -1047,7 +1041,8 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.icharger.charger_change_notifier_register =
 						cable_detect_register_notifier,
 	.icharger.dump_all = pm8921_dump_all,
-
+	.icharger.is_safty_timer_timeout = pm8921_is_chg_safety_timer_timeout,
+	.icharger.is_battery_full_eoc_stop = pm8921_is_batt_full_eoc_stop,
 
 	
 	.igauge.name = "pm8921",
@@ -1065,6 +1060,10 @@ static struct htc_battery_platform_data htc_battery_pdev_data = {
 	.igauge.enable_lower_voltage_alarm = pm8xxx_batt_lower_alarm_enable,
 	.igauge.set_lower_voltage_alarm_threshold =
 						pm8xxx_batt_lower_alarm_threshold_set,
+	
+#ifdef CONFIG_HTC_PNPMGR
+	.notify_pnpmgr_charging_enabled = pnpmgr_battery_charging_enabled,
+#endif 
 };
 static struct platform_device htc_battery_pdev = {
 	.name = "htc_battery",
@@ -1307,7 +1306,7 @@ struct pm8921_bms_battery_data  bms_battery_data_id_2 = {
 static struct htc_battery_cell htc_battery_cells[] = {
 	[0] = {
 		.model_name = "BJ83100",
-		.capacity = 2000,
+		.capacity = 2020,
 		.id = 1,
 		.id_raw_min = 73, 
 		.id_raw_max = 204,
@@ -1319,7 +1318,7 @@ static struct htc_battery_cell htc_battery_cells[] = {
 	},
 	[1] = {
 		.model_name = "BJ83100",
-		.capacity = 2000,
+		.capacity = 2020,
 		.id = 2,
 		.id_raw_min = 205, 
 		.id_raw_max = 385,
@@ -1331,7 +1330,7 @@ static struct htc_battery_cell htc_battery_cells[] = {
 	},
 	[2] = {
 		.model_name = "UNKNOWN",
-		.capacity = 2000,
+		.capacity = 2020,
 		.id = 255,
 		.id_raw_min = INT_MIN,
 		.id_raw_max = INT_MAX,
@@ -1672,7 +1671,7 @@ out:
 
 static struct android_usb_platform_data android_usb_pdata = {
 	.vendor_id	= 0x0BB4,
-	.product_id	= 0x0dfe,
+	.product_id	= 0x0de4,
 	.version	= 0x0100,
 	.product_name		= "Android Phone",
 	.manufacturer_name	= "HTC",
@@ -1682,7 +1681,7 @@ static struct android_usb_platform_data android_usb_pdata = {
 	.functions = usb_functions_all,
 	.update_pid_and_serial_num = usb_diag_update_pid_and_serial_num,
 	.usb_id_pin_gpio = USB1_HS_ID_GPIO,
-	.usb_rmnet_interface = "HSIC,HSIC",
+	.usb_rmnet_interface = "HSIC:HSIC",
 	.usb_diag_interface = "diag,diag_mdm",
 	.fserial_init_string = "HSIC:modem,tty,tty:autobot,tty:serial,tty:autobot",
 	.serial_number = "000000000000",
@@ -2414,6 +2413,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.display_width = 1080,
 		.display_height = 1920,
 		.gpio_irq = TP_ATTz,
+		.gpio_reset = TP_RSTz,
 		.default_config = 1,
 		.report_type = SYN_AND_REPORT_TYPE_B,
 		.psensor_detection = 1,
@@ -2473,6 +2473,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.display_width = 1080,
 		.display_height = 1920,
 		.gpio_irq = TP_ATTz,
+		.gpio_reset = TP_RSTz,
 		.default_config = 1,
 		.report_type = SYN_AND_REPORT_TYPE_B,
 		.large_obj_check = 1,
@@ -2533,6 +2534,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.display_width = 1080,
 		.display_height = 1920,
 		.gpio_irq = TP_ATTz,
+		.gpio_reset = TP_RSTz,
 		.default_config = 1,
 		.report_type = SYN_AND_REPORT_TYPE_B,
 		.large_obj_check = 1,
@@ -2590,6 +2592,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.display_width = 1080,
 		.display_height = 1920,
 		.gpio_irq = TP_ATTz,
+		.gpio_reset = TP_RSTz,
 		.default_config = 2,
 		.large_obj_check = 1,
 		.config = {0x4D, 0x4F, 0x4F, 0x31, 0x04, 0x3F, 0x03, 0x1E,
@@ -2638,6 +2641,7 @@ static struct synaptics_i2c_rmi_platform_data syn_ts_3k_data[] = {
 		.display_width = 1080,
 		.display_height = 1920,
 		.gpio_irq = TP_ATTz,
+		.gpio_reset = TP_RSTz,
 		.default_config = 2,
 		.config = {0x30, 0x32, 0x30, 0x30, 0x84, 0x0F, 0x03, 0x1E,
 			0x05, 0x20, 0xB1, 0x00, 0x0B, 0x19, 0x19, 0x00,
@@ -3086,6 +3090,27 @@ static struct msm_thermal_data msm_thermal_pdata = {
 	.limit_freq = 918000,
 };
 
+static int __init check_dq_setup(char *str)
+{
+	int i = 0;
+	int size = 0;
+
+	size = sizeof(chg_batt_params)/sizeof(chg_batt_params[0]);
+
+	if (!strcmp(str, "PASS")) {
+		
+	} else {
+		for(i=0; i < size; i++)
+		{
+			chg_batt_params[i].max_voltage = 4200;
+			chg_batt_params[i].cool_bat_voltage = 4200;
+		}
+	}
+	return 1;
+}
+__setup("androidboot.dq=", check_dq_setup);
+
+
 #define MSM_SHARED_RAM_PHYS 0x80000000
 static void __init deluxe_ub1_map_io(void)
 {
@@ -3428,40 +3453,6 @@ static struct msm_spm_seq_entry msm_spm_seq_list[] __initdata = {
 		.cmd = spm_power_collapse_with_rpm,
 	},
 };
-
-#ifdef CONFIG_PERFLOCK
-static unsigned dlx_perf_acpu_table[] = {
-	594000000, 
-	810000000, 
-	1134000000,
-	1566000000,
-	1728000000, 
-};
-
-static struct perflock_data dlx_floor_data = {
-	.perf_acpu_table = dlx_perf_acpu_table,
-	.table_size = ARRAY_SIZE(dlx_perf_acpu_table),
-};
-
-static struct perflock_data dlx_cpufreq_ceiling_data = {
-	.perf_acpu_table = dlx_perf_acpu_table,
-	.table_size = ARRAY_SIZE(dlx_perf_acpu_table),
-};
-
-static struct perflock_pdata perflock_pdata = {
-	.perf_floor = &dlx_floor_data,
-	.perf_ceiling = &dlx_cpufreq_ceiling_data,
-};
-
-struct platform_device msm8064_device_perf_lock = {
-	.name = "perf_lock",
-	.id = -1,
-	.dev = {
-		.platform_data = &perflock_pdata,
-	},
-};
-
-#endif
 
 static uint8_t l2_spm_wfi_cmd_sequence[] __initdata = {
 	0x00, 0x20, 0x03, 0x20,
@@ -3891,22 +3882,22 @@ static struct platform_device vibrator_pwm_device = {
 };
 
 
-static struct ramdump_platform_data ramdump_data_1G = {
-	.count = 1,
-	.region = {
-		{
-			.start	= 0x90000000,
-			.size	= 0x30000000,
-		},
-	}
-};
-
 static struct ramdump_platform_data ramdump_data_2G = {
 	.count = 1,
 	.region = {
 		{
 			.start	= 0x90000000,
 			.size	= 0x70000000,
+		},
+	}
+};
+
+static struct ramdump_platform_data ramdump_data_1G = {
+	.count = 1,
+	.region = {
+		{
+			.start	= 0x90000000,
+			.size	= 0x30000000,
 		},
 	}
 };
@@ -3918,7 +3909,7 @@ struct platform_device device_htc_ramdump = {
 };
 
 static struct platform_device *common_devices[] __initdata = {
-	&msm8960_device_acpuclk,
+	&msm8064_device_acpuclk,
 	&ram_console_device,
 	&apq8064_device_dmov,
 	&apq8064_device_qup_i2c_gsbi1,
@@ -4172,7 +4163,7 @@ static void __init deluxe_ub1_i2c_init(void)
 					&deluxe_ub1_i2c_qup_gsbi1_pdata;
 	gsbi_mem = ioremap_nocache(MSM_GSBI1_PHYS, 4);
 	writel_relaxed(GSBI_DUAL_MODE_CODE, gsbi_mem);
-	
+	/* Ensure protocol code is written before proceeding */
 	wmb();
 	iounmap(gsbi_mem);
 	deluxe_ub1_i2c_qup_gsbi1_pdata.use_gsbi_shared_mode = 1;
@@ -4209,64 +4200,6 @@ static int ethernet_init(void)
 	return 0;
 }
 #endif
-
-#define GPIO_KEY_HOME		PM8921_GPIO_PM_TO_SYS(27)
-#define GPIO_KEY_VOLUME_UP	PM8921_GPIO_PM_TO_SYS(35)
-#define GPIO_KEY_VOLUME_DOWN	PM8921_GPIO_PM_TO_SYS(38)
-#define GPIO_KEY_CAM_FOCUS	PM8921_GPIO_PM_TO_SYS(3)
-#define GPIO_KEY_CAM_SNAP	PM8921_GPIO_PM_TO_SYS(4)
-#define GPIO_KEY_ROTATION	46
-
-static struct gpio_keys_button cdp_keys[] = {
-	{
-		.code           = KEY_HOME,
-		.gpio           = GPIO_KEY_HOME,
-		.desc           = "home_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEUP,
-		.gpio           = GPIO_KEY_VOLUME_UP,
-		.desc           = "volume_up_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = KEY_VOLUMEDOWN,
-		.gpio           = GPIO_KEY_VOLUME_DOWN,
-		.desc           = "volume_down_key",
-		.active_low     = 1,
-		.type		= EV_KEY,
-		.wakeup		= 1,
-		.debounce_interval = 15,
-	},
-	{
-		.code           = SW_ROTATE_LOCK,
-		.gpio           = GPIO_KEY_ROTATION,
-		.desc           = "rotate_key",
-		.active_low     = 1,
-		.type		= EV_SW,
-		.debounce_interval = 15,
-	},
-};
-
-static struct gpio_keys_platform_data cdp_keys_data = {
-	.buttons        = cdp_keys,
-	.nbuttons       = ARRAY_SIZE(cdp_keys),
-};
-
-static struct platform_device cdp_kp_pdev = {
-	.name           = "gpio-keys",
-	.id             = -1,
-	.dev            = {
-		.platform_data  = &cdp_keys_data,
-	},
-};
 
 #define DSPS_PIL_GENERIC_NAME          "dsps"
 static void __init deluxe_ub1_init_dsps(void)
@@ -4760,9 +4693,9 @@ static void __init deluxe_ub1_common_init(void)
 	if (msm_xo_init())
 		pr_err("Failed to initialize XO votes\n");
 	
-	clk_ignor_list_add("msm_sdcc.4", "core_clk", &deluxe_ub1_clock_init_data);
+	clk_ignor_list_add("msm_sdcc.4", "core_clk", &apq8064_clock_init_data_r2);
 	
-	msm_clock_init(&deluxe_ub1_clock_init_data);
+	msm_clock_init(&apq8064_clock_init_data_r2);
 	deluxe_ub1_init_gpiomux();
 #ifdef CONFIG_RESET_BY_CABLE_IN
 	pr_info("[CABLE] Enable Ac Reset Function.(%d) \n", system_rev);
@@ -4822,6 +4755,7 @@ static void __init deluxe_ub1_common_init(void)
 	}
 
 	apq8064_device_hsic_host.dev.platform_data = &msm_hsic_pdata;
+	msm_hsic_pdata.swfi_latency = msm_rpmrs_levels[0].latency_us;
 	device_initialize(&apq8064_device_hsic_host.dev);
 	deluxe_ub1_pm8xxx_gpio_mpp_init();
 	deluxe_ub1_init_mmc();
@@ -4919,7 +4853,6 @@ static void __init deluxe_ub1_cdp_init(void)
 #ifdef CONFIG_MSM_CAMERA
 	deluxe_ub1_init_cam();
 #endif
-	platform_device_register(&cdp_kp_pdev);
 
 #ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
         if(!cpu_is_krait_v1())

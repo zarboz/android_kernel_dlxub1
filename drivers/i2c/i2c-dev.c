@@ -22,6 +22,7 @@
 */
 
 
+/* The I2C_RDWR ioctl code is written by Kolja Waschk <waschk@telos.de> */
 
 #include <linux/kernel.h>
 #include <linux/module.h>

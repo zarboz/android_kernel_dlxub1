@@ -210,6 +210,9 @@
 
 #define NR_SG		128
 
+#ifdef CONFIG_WIMAX
+#define MSM_MMC_WIMAX_IDLE_TIMEOUT	1000 
+#endif
 #define MSM_MMC_IDLE_TIMEOUT	5000 
 #define MSM_MMC_IDLE_TIMEOUT_EMMC	20 
 #define MSM_MMC_CLK_GATE_DELAY	200 
@@ -302,8 +305,9 @@ struct msmsdcc_sps_data {
 	unsigned int			dest_pipe_index;
 	unsigned int			busy;
 	unsigned int			xfer_req_cnt;
-	bool				pipe_reset_pending;
-	bool				reset_device;
+	bool                            pipe_reset_pending;
+	bool                            reset_device;
+	bool                            reset_bam;
 	struct tasklet_struct		tlet;
 };
 
@@ -355,6 +359,9 @@ struct msmsdcc_host {
 #ifdef CONFIG_WIFI_MMC
     unsigned long       irq_time;
 #endif
+#ifdef CONFIG_WIMAX
+    unsigned long       irq_time_wimax;
+#endif
 
 	struct msmsdcc_dma_data	dma;
 	struct msmsdcc_sps_data sps;
@@ -387,6 +394,7 @@ struct msmsdcc_host {
 	bool io_pad_pwr_switch;
 	bool tuning_in_progress;
 	bool tuning_needed;
+	bool tuning_done;
 	bool en_auto_cmd19;
 	bool sdio_gpio_lpm;
 	bool irq_wake_enabled;
@@ -412,10 +420,17 @@ struct msmsdcc_host {
 	struct proc_dir_entry *wr_perf_proc;
 	struct proc_dir_entry *burst_proc;
 	struct proc_dir_entry *bkops_proc;
+	struct proc_dir_entry *speed_class;
 
 #ifdef CONFIG_WIFI_MMC
     bool is_runtime_resumed;
 #endif
+#ifdef CONFIG_WIMAX
+    bool is_runtime_resumed_wimax;
+#endif
+	
+	unsigned int cont_tuning_cnt;
+	
 
 };
 
@@ -482,6 +497,13 @@ static inline int msmsdcc_lpm_disable(struct mmc_host *mmc)
 	wake_unlock(&host->sdio_wlock);
 	return ret;
 }
+#endif
+
+#ifdef CONFIG_WIMAX
+extern int mmc_wimax_get_status(void);
+extern void mmc_wimax_enable_host_wakeup(int on);
+extern int mmc_wimax_get_disable_irq_config(void);
+extern int mmc_wimax_get_irq_log(void);
 #endif
 
 #endif

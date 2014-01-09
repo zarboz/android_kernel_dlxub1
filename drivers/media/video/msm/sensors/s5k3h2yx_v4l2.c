@@ -355,6 +355,62 @@ static struct msm_camera_i2c_reg_conf s5k3h2yx_snap_settings[] = {
 	{ 0x301A , 0x77 }, 
 };
 
+static struct msm_camera_i2c_reg_conf s5k3h2yx_4_3_settings[] = {
+	
+	{0x0305, 0x04},
+	{0x0306, 0x00},
+	{0x0307, 0x98},
+	{0x0303, 0x01},
+	{0x0301, 0x05},
+	{0x030B, 0x01},
+	{0x0309, 0x05},
+	{0x30CC, 0xE0},
+	{0x31A1, 0x5A},
+
+	
+	{0x0200, 0x02},
+	{0x0201, 0x50},
+	{0x0202, 0x04},
+	{0x0203, 0xE7},
+	{0x0204, 0x00},
+	{0x0205, 0x20},
+	{0x0342, 0x0D},
+	{0x0343, 0x8E},
+#ifdef CONFIG_RAWCHIP
+	{0x0340, 0x09},
+	{0x0341, 0xC4},
+#else
+	{0x0340, 0x09},
+	{0x0341, 0xC0},
+#endif
+	
+	{0x0344, 0x00},
+	{0x0345, 0x00},
+	{0x0346, 0x00},
+	{0x0347, 0x00},
+	{0x0348, 0x0C},
+	{0x0349, 0xCF},
+	{0x034A, 0x09},
+	{0x034B, 0x9F},
+	{0x0381, 0x01},
+	{0x0383, 0x01},
+	{0x0385, 0x01},
+	{0x0387, 0x01},
+	{0x0105, 0x01}, 
+	{0x0401, 0x00},
+	{0x0405, 0x10},
+	{0x0700, 0x05},
+	{0x0701, 0x30},
+	{0x034C, 0x0C},
+	{0x034D, 0xD0},
+	{0x034E, 0x09},
+	{0x034F, 0xA0},
+
+	
+	{ 0x300E , 0x29 }, 
+	{ 0x31A3 , 0x00 }, 
+	{ 0x301A , 0x77 }, 
+};
 
 static struct msm_camera_i2c_reg_conf s5k3h2yx_snap_wide_settings[] = {
 
@@ -576,6 +632,8 @@ static struct msm_camera_i2c_conf_array s5k3h2yx_confs[] = {
 	ARRAY_SIZE(s5k3h2yx_fast_video_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
 	{&s5k3h2yx_snap_wide_settings[0],
 	ARRAY_SIZE(s5k3h2yx_snap_wide_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
+	{&s5k3h2yx_4_3_settings[0],
+	ARRAY_SIZE(s5k3h2yx_4_3_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
 	{&s5k3h2yx_night_settings[0],
 	ARRAY_SIZE(s5k3h2yx_night_settings), 0, MSM_CAMERA_I2C_BYTE_DATA},
 };
@@ -714,6 +772,28 @@ static struct msm_sensor_output_info_t s5k3h2yx_dimensions[] = {
 		.y_odd_inc = 1,
 		.binning_rawchip = 0x11,
 	},
+	{
+		.x_output = 0xCD0,
+		.y_output = 0x9A0,
+		.line_length_pclk = 0xD8E,
+#ifdef CONFIG_RAWCHIP
+		.frame_length_lines = 0x9C4,
+#else
+		.frame_length_lines = 0x9C0,
+#endif
+		.vt_pixel_clk = 182400000,
+		.op_pixel_clk = 182400000,
+		.binning_factor = 1,
+		.x_addr_start = 0,
+		.y_addr_start = 0,
+		.x_addr_end = 0xCCF,
+		.y_addr_end = 0x99F,
+		.x_even_inc = 1,
+		.x_odd_inc = 1,
+		.y_even_inc = 1,
+		.y_odd_inc = 1,
+		.binning_rawchip = 0x11,
+	},	
 	{
 		.x_output = 0x668,
 		.y_output = 0x4D0,

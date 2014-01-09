@@ -504,6 +504,33 @@ static int mmc_read_ext_csd(struct mmc_card *card, u8 *ext_csd)
 		strncpy(card->ext_csd.fwrev, buf, strlen(buf));
 	}
 
+	if (mmc_card_mmc(card)) {
+		char *buf;
+		int i, j;
+		ssize_t n = 0;
+		pr_info("%s: cid %08x%08x%08x%08x\n",
+			mmc_hostname(card->host),
+			card->raw_cid[0], card->raw_cid[1],
+			card->raw_cid[2], card->raw_cid[3]);
+		pr_info("%s: csd %08x%08x%08x%08x\n",
+			mmc_hostname(card->host),
+			card->raw_csd[0], card->raw_csd[1],
+			card->raw_csd[2], card->raw_csd[3]);
+
+		buf = kmalloc(512, GFP_KERNEL);
+		if (buf) {
+			for (i = 0; i < 32; i++) {
+				for (j = 511 - (16 * i); j >= 496 - (16 * i); j--)
+					n += sprintf(buf + n, "%02x", ext_csd[j]);
+				n += sprintf(buf + n, "\n");
+				pr_info("%s: ext_csd %s", mmc_hostname(card->host), buf);
+				n = 0;
+			}
+		}
+		if (buf)
+			kfree(buf);
+	}
+
 out:
 	return err;
 }
@@ -905,7 +932,10 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			mmc_set_erase_size(card);
 		}
 	}
-	if (card->cid.manfid == 0x45) {
+	
+	if (card->ext_csd.rev >= 6)
+		card->wr_perf = 14;
+	else if (card->cid.manfid == 0x45) {
 		
 		if ((card->ext_csd.sectors == 31105024) && !strcmp(card->cid.prod_name, "SEM16G"))
 			card->wr_perf = 12;
@@ -932,6 +962,9 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			card->wr_perf = 11;
 		
 		else if ((card->ext_csd.sectors == 30535680) && !strcmp(card->cid.prod_name, "MAG2GA"))
+			card->wr_perf = 14;
+		
+		else if ((card->ext_csd.sectors == 61071360) && (card->cid.fwrev == 0x7))
 			card->wr_perf = 14;
 		
 		else if (card->ext_csd.sectors == 122142720)
@@ -1132,6 +1165,8 @@ static int mmc_init_card(struct mmc_host *host, u32 ocr,
 			mmc_set_timing(card->host, MMC_TIMING_UHS_DDR50);
 			mmc_set_bus_width(card->host, bus_width);
 		}
+		pr_info("%s: switch to bus width %d\n", mmc_hostname(card->host),
+			1 << bus_width);
 	}
 
 	if (card->ext_csd.hpi) {

@@ -1070,12 +1070,8 @@ int netlink_broadcast_filtered(struct sock *ssk, struct sk_buff *skb, u32 pid,
 
 	if (info.delivery_failure) {
 
-#ifdef CONFIG_HTC_NETWORK_MODIFY
 		if (!IS_ERR(info.skb2) && (info.skb2))
 			kfree_skb(info.skb2);
-#else
-			kfree_skb(info.skb2);
-#endif
 
 		return -ENOBUFS;
 	} else
@@ -1387,11 +1383,8 @@ static int netlink_recvmsg(struct kiocb *kiocb, struct socket *sock,
 
 	copied = 0;
 
-        if (IS_ERR(sk) || (!sk))
-                goto out;
-
 	skb = skb_recv_datagram(sk, flags, noblock, &err);
-	if (skb == NULL || IS_ERR(skb))
+	if (skb == NULL)
 		goto out;
 
 	data_skb = skb;

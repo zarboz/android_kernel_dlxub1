@@ -104,6 +104,8 @@ struct pm8921_charger_platform_data {
 	int				thermal_levels;
 	int				mbat_in_gpio;
 	int				wlc_tx_gpio;
+	int				cable_in_irq;
+	int				cable_in_gpio;
 	int				is_embeded_batt;
 	enum pm8921_chg_cold_thr	cold_thr;
 	enum pm8921_chg_hot_thr		hot_thr;
@@ -174,6 +176,8 @@ int pm8921_usb_ovp_disable(int disable);
 #ifdef CONFIG_HTC_BATT_8960
 int pm8921_get_batt_voltage(int *result);
 
+int pm8921_set_chg_ovp(int is_ovp);
+
 int pm8921_get_batt_temperature(int *result);
 
 int pm8921_get_batt_id(int *result);
@@ -182,7 +186,13 @@ int pm8921_is_batt_temperature_fault(int *result);
 
 int pm8921_is_batt_temp_fault_disable_chg(int *result);
 
+int pm8921_is_pwrsrc_under_rating(int *result);
+
 int pm8921_is_batt_full(int *result);
+
+int pm8921_is_chg_safety_timer_timeout(int *result);
+
+int pm8921_is_batt_full_eoc_stop(int *result);
 
 int pm8921_get_charging_source(int *result);
 
@@ -293,6 +303,10 @@ static inline int pm8921_get_batt_voltage(int *result)
 {
 	return -ENXIO;
 }
+static inline int pm8921_set_chg_ovp(int is_ovp)
+{
+	return -ENXIO;
+}
 static inline int pm8921_get_batt_temperature(int *result)
 {
 	return -ENXIO;
@@ -309,7 +323,19 @@ static inline int pm8921_is_batt_temp_fault_disable_chg(int *result)
 {
 	return -ENXIO;
 }
+static inline int pm8921_is_pwrsrc_under_rating(int *result)
+{
+	return -ENXIO;
+}
 static inline int pm8921_is_batt_full(int *result)
+{
+	return -ENXIO;
+}
+static inline int pm8921_is_chg_safety_timer_timeout(int *result)
+{
+	return -ENXIO;
+}
+static inline int pm8921_is_batt_full_eoc_stop(int *result)
 {
 	return -ENXIO;
 }
