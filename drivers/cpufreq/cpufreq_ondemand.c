@@ -31,7 +31,7 @@
 #include <trace/events/cpufreq_interactive.h>
 
 
-#define DEF_SAMPLING_RATE				(50000)
+#define DEF_SAMPLING_RATE			(50000)
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(10)
 #define DEF_FREQUENCY_UP_THRESHOLD		(80)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
@@ -54,7 +54,7 @@ static unsigned int min_sampling_rate;
 static unsigned int skip_ondemand = 0;
 
 #define LATENCY_MULTIPLIER			(1000)
-#define MIN_LATENCY_MULTIPLIER			(100)
+#define MIN_LATENCY_MULTIPLIER			(20)
 #define TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
 
 #define POWERSAVE_BIAS_MAXLEVEL			(1000)
@@ -1391,11 +1391,12 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 		this_dbs_info->cur_policy = NULL;
 		if (!cpu)
 			input_unregister_handler(&dbs_input_handler);
-		mutex_unlock(&dbs_mutex);
+
 		if (!dbs_enable)
 			sysfs_remove_group(cpufreq_global_kobject,
 					   &dbs_attr_group);
 
+		mutex_unlock(&dbs_mutex);
 		trace_cpufreq_interactive_target (cpu, 0, 0, 0);
 		break;
 
