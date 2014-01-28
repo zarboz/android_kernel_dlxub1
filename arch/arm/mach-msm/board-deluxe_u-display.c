@@ -257,6 +257,7 @@ static int mdp_core_clk_rate_table[] = {
 struct mdp_reg *mdp_gamma = NULL;
 int mdp_gamma_count = 0;
 
+struct mdp_reg mdp_gamma_sharp[] = {
 	{0x94800, 0x000000, 0x0},
 	{0x94804, 0x010101, 0x0},
         {0x94808, 0x020202, 0x0},
